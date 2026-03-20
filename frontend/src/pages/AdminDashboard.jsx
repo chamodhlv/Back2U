@@ -208,6 +208,7 @@ const AdminDashboard = () => {
       icon: <LayoutDashboard className="w-5 h-5" />,
     },
     { id: "users", label: "Users", icon: <Users className="w-5 h-5" /> },
+  
   ];
 
   const statCards = [
@@ -373,6 +374,7 @@ const AdminDashboard = () => {
                   >
                     <UserPlus className="w-5 h-5 text-primary-500" />
                     <div className="text-left">
+                      
                       <p className="text-sm font-medium text-surface-dark">
                         Create New User
                       </p>
@@ -412,6 +414,13 @@ const AdminDashboard = () => {
                     {stats.total} total users
                   </p>
                 </div>
+                  <button
+                  onClick={() => navigate("/admin/notices/create")}
+                  className="px-5 py-2.5 bg-gradient-to-r from-primary-500 to-accent-500 rounded-xl font-medium text-sm text-white hover:from-primary-600 hover:to-accent-600 transition-all shadow-md shadow-primary-500/20 flex items-center gap-2 self-start"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  Admin Notice Create
+                </button>
                 <button
                   onClick={() => setShowCreateModal(true)}
                   className="px-5 py-2.5 bg-gradient-to-r from-primary-500 to-accent-500 rounded-xl font-medium text-sm text-white hover:from-primary-600 hover:to-accent-600 transition-all shadow-md shadow-primary-500/20 flex items-center gap-2 self-start"
@@ -419,6 +428,7 @@ const AdminDashboard = () => {
                   <UserPlus className="w-4 h-4" />
                   Create User
                 </button>
+            
               </div>
 
               {/* Filters */}

@@ -21,36 +21,42 @@ const Home = () => {
       title: "Report Lost Items",
       desc: "Quickly post details about your lost belongings with photos and location.",
       gradient: "from-primary-500 to-accent-500",
+      path: "/report",
     },
     {
       icon: <MapPin className="w-6 h-6" />,
       title: "Found Items Board",
       desc: "Browse items found across campus and claim what belongs to you.",
       gradient: "from-emerald-500 to-teal-500",
+      path: "/found-items",
     },
     {
       icon: <Bell className="w-6 h-6" />,
       title: "Instant Notifications",
       desc: "Get notified when someone finds an item matching your description.",
       gradient: "from-amber-500 to-orange-500",
+      path: "/notifications",
     },
     {
       icon: <Shield className="w-6 h-6" />,
       title: "Secure Verification",
       desc: "Verified student accounts ensure trust and accountability.",
       gradient: "from-violet-500 to-purple-500",
+      path: "/verification",
     },
     {
       icon: <Users className="w-6 h-6" />,
       title: "Community Driven",
       desc: "Built by students, for students — connect and help each other.",
       gradient: "from-pink-500 to-rose-500",
+      path: "/community",
     },
     {
       icon: <Trophy className="w-6 h-6" />,
       title: "Earn Rewards",
       desc: "Gain points for helping return lost items — climb the leaderboard!",
       gradient: "from-yellow-500 to-amber-500",
+      path: "/rewards",
     },
   ];
 
@@ -65,7 +71,6 @@ const Home = () => {
     <div className="min-h-screen bg-surface text-surface-dark overflow-hidden">
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 px-4">
-        {/* Background effects */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary-100/60 rounded-full blur-[128px]" />
           <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent-400/10 rounded-full blur-[128px]" />
@@ -73,7 +78,6 @@ const Home = () => {
         </div>
 
         <div className="relative max-w-7xl mx-auto text-center">
-          {/* Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary-50 border border-primary-200/50 rounded-full mb-8">
             <Sparkles className="w-4 h-4 text-primary-500" />
             <span className="text-sm text-primary-700 font-medium">
@@ -81,7 +85,6 @@ const Home = () => {
             </span>
           </div>
 
-          {/* Heading */}
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-tight mb-6 text-surface-dark">
             Lost Something?
             <br />
@@ -96,7 +99,6 @@ const Home = () => {
             trusted space designed for students.
           </p>
 
-          {/* CTAs */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             {user ? (
               <Link
@@ -161,22 +163,22 @@ const Home = () => {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {features.map((f, i) => (
-              <div
-                key={i}
-                className="group p-6 bg-white border border-gray-200/60 rounded-2xl hover:shadow-lg hover:shadow-primary-500/5 hover:border-primary-200/60 transition-all duration-300"
-              >
-                <div
-                  className={`w-12 h-12 rounded-xl bg-gradient-to-br ${f.gradient} flex items-center justify-center mb-4 shadow-md text-white group-hover:scale-110 transition-transform`}
-                >
-                  {f.icon}
+              <Link to={f.path} key={i}>
+                <div className="group cursor-pointer p-6 bg-white border border-gray-200/60 rounded-2xl hover:shadow-lg hover:shadow-primary-500/5 hover:border-primary-200/60 transition-all duration-300 hover:-translate-y-1">
+                  <div
+                    className={`w-12 h-12 rounded-xl bg-gradient-to-br ${f.gradient} flex items-center justify-center mb-4 shadow-md text-white group-hover:scale-110 transition-transform`}
+                  >
+                    {f.icon}
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2 text-surface-dark flex items-center justify-between">
+                    {f.title}
+                    <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition" />
+                  </h3>
+                  <p className="text-gray-500 text-sm leading-relaxed">
+                    {f.desc}
+                  </p>
                 </div>
-                <h3 className="text-lg font-semibold mb-2 text-surface-dark">
-                  {f.title}
-                </h3>
-                <p className="text-gray-500 text-sm leading-relaxed">
-                  {f.desc}
-                </p>
-              </div>
+              </Link>
             ))}
           </div>
         </div>

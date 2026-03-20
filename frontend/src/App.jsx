@@ -8,6 +8,15 @@ import Register from './pages/Register';
 import StudentDashboard from './pages/StudentDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 
+import FoundItemsList from "./pages/FoundItemsList/FoundItemsList";
+import ReportFoundItem from "./pages/ReportFoundItem/ReportFoundItem";
+import FoundItemDetails from "./pages/FoundItemDetails/FoundItemDetails";
+import SubmitClaim from "./pages/SubmitClaim/SubmitClaim";
+import ManageClaims from "./pages/ManagerClaims/ManagerClaims";
+import CampusNotices from "./pages/CampusNotices/CampusNotices";
+import AdminNotices from "./pages/AdminNotices/AdminNotices";
+import CreateNotice from "./pages/CreateNotice/CreateNotice";
+
 const AuthRedirect = ({ children }) => {
   const { user } = useAuth();
   if (user) {
@@ -55,7 +64,24 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          
           <Route path="*" element={<Navigate to="/" replace />} />
+
+
+          {/* Found Items Routes */}
+      <Route path="/found-items" element={<FoundItemsList/>} />
+      <Route path="/report" element={<ReportFoundItem/>} />
+      <Route path="/found/:id" element={<FoundItemDetails/>} />
+      <Route path="/claim/:id" element={<SubmitClaim/>} />
+      <Route path="/manage/:id" element={<ManageClaims/>} />
+
+      {/* Campus Notices Routes */}
+      <Route path="/notices" element={<CampusNotices/>} />
+      <Route path="/admin/notices" element={<AdminNotices/>} />
+      <Route path="/admin/notices/create" element={<CreateNotice/>} />
+      <Route path="/admin/notices/edit/:id" element={<adminCreateNotice/>} />
+
         </Routes>
       </Router>
     </AuthProvider>

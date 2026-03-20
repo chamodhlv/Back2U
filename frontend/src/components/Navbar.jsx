@@ -37,6 +37,13 @@ const Navbar = () => {
                             Home
                         </Link>
 
+                         <Link
+                            to="/notices"
+                            className="px-4 py-2 text-sm text-gray-600 hover:text-surface-dark rounded-lg hover:bg-gray-100 transition-all"
+                        >
+                            Admin Notices
+                        </Link>
+
                         {user ? (
                             <>
                                 <Link
