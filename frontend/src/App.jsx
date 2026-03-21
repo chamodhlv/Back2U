@@ -8,6 +8,7 @@ import Register from './pages/Register';
 import StudentDashboard from './pages/StudentDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import LostItems from './pages/LostItems';
+import FoundItems from './pages/FoundItems';
 
 const AuthRedirect = ({ children }) => {
   const { user } = useAuth();
@@ -57,6 +58,7 @@ function App() {
             }
           />
           <Route path="/lost" element={<LostItems />} />
+          <Route path="/found-items" element={<FoundItems />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
