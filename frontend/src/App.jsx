@@ -9,6 +9,7 @@ import StudentDashboard from './pages/StudentDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import LostItems from './pages/LostItems';
 import FoundItems from './pages/FoundItems';
+import ChatPage from './pages/ChatPage';
 
 const AuthRedirect = ({ children }) => {
   const { user } = useAuth();
@@ -46,6 +47,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <StudentDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/chat"
+            element={
+              <ProtectedRoute>
+                <ChatPage />
               </ProtectedRoute>
             }
           />

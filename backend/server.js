@@ -37,6 +37,10 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/lost', require('./routes/lostItemRoutes'));
 app.use('/api/found', require('./routes/foundItemRoutes'));
+app.use('/api/messages', require('./routes/messageRoutes'));
+app.use('/api/chats', require('./routes/chatRoutes'));
+app.use('/api/contact', require('./routes/contactRoutes'));
+app.use('/api/return', require('./routes/returnRoutes'));
 
 // Health check
 app.get('/api/health', (req, res) => {
