@@ -11,7 +11,10 @@ const messageSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
-    content: { type: String, required: true },
+    content: { 
+        type: String, 
+        required: true 
+    },
     type: {
         type: String,
         enum: ['TEXT', 'SYSTEM'],
@@ -21,8 +24,32 @@ const messageSchema = new mongoose.Schema({
         userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
         readAt: Date
     }],
-    isEdited: { type: Boolean, default: false },
-    editedAt: { type: Date, default: null }
+    // New fields for edit/delete
+    isEdited: { 
+        type: Boolean, 
+        default: false 
+    },
+    editedAt: { 
+        type: Date, 
+        default: null 
+    },
+    isDeleted: {
+        type: Boolean,
+        default: false
+    },
+    deletedAt: {
+        type: Date,
+        default: null
+    },
+    deletedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    }
 }, { timestamps: true });
+
+// Index for better query performance
+messageSchema.index({ chatId: 1, createdAt: -1 });
+messageSchema.index({ isDeleted: 1 });
 
 module.exports = mongoose.model('Message', messageSchema);
