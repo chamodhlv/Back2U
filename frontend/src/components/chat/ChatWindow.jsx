@@ -47,7 +47,7 @@ const ChatWindow = ({ chat, onBack }) => {
                 socket.emit('leave_chat', chat._id);
             }
         };
-    }, [chat?._id]);
+    }, [chat?._id, socket]);
 
     // Listen for new messages
     useEffect(() => {

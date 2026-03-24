@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { getReports, updateReport } from '../../api/report';
 import { Shield, CheckCircle, AlertCircle, Clock, Search, XCircle, MoreVertical } from 'lucide-react';
 
+// eslint-disable-next-line no-unused-vars
 const ReportManagement = ({ user }) => {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -12,6 +13,7 @@ const ReportManagement = ({ user }) => {
 
   useEffect(() => {
     fetchReports();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
 
   const fetchReports = async () => {
@@ -20,6 +22,7 @@ const ReportManagement = ({ user }) => {
       const query = statusFilter ? `?status=${statusFilter}` : '';
       const data = await getReports(query);
       setReports(data || []);
+    // eslint-disable-next-line no-unused-vars
     } catch (error) {
       setMessage({ text: 'Failed to load reports', type: 'error' });
     } finally {
@@ -38,6 +41,7 @@ const ReportManagement = ({ user }) => {
       setAdminNotes('');
       fetchReports();
       setTimeout(() => setMessage({ text: '', type: '' }), 3000);
+    // eslint-disable-next-line no-unused-vars
     } catch (error) {
       setMessage({ text: 'Failed to update report', type: 'error' });
     }

@@ -30,7 +30,7 @@ const noticeSchema = new mongoose.Schema(
         },
         expiryDate: {
             type: Date,
-            required: [true, 'Expiry date is required'],
+            default: null,
         },
         isActive: {
             type: Boolean,

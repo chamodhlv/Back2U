@@ -54,7 +54,18 @@ const foundItemSchema = new mongoose.Schema(
         },
         linkedLostPost: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'LostItem', // can be linked to a lost post later
+            ref: 'LostItem',
+            default: null,
+        },
+        // Claim tracking
+        claimedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            default: null,
+        },
+        activeClaim: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Claim',
             default: null,
         },
         isArchived: {

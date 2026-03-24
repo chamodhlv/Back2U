@@ -2,18 +2,24 @@ const mongoose = require('mongoose');
 
 const chatSchema = new mongoose.Schema({
     claimId: {
-        type: String,
+        type: mongoose.Schema.Types.ObjectId,
         ref: 'Claim',
         required: true
-    },
-    claimCode: { // human-readable
-        type: String
     },
     participants: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
     }],
+    itemId: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true
+    },
+    itemType: {
+        type: String,
+        enum: ['lost', 'found'],
+        required: true
+    },
     status: {
         type: String,
         enum: ['ACTIVE', 'LOCKED'],
@@ -22,19 +28,14 @@ const chatSchema = new mongoose.Schema({
     lockedAt: { type: Date, default: null },
     lastMessage: { type: String, default: '' },
     lastMessageAt: { type: Date, default: Date.now },
-    itemId: {
-        type: String,  // Changed from ObjectId to String
-        required: true
-    },
-    itemType: {
-        type: String,
-        enum: ['lost', 'found']
-    },
     unreadCount: {
         type: Map,
         of: Number,
         default: {}
     }
 }, { timestamps: true });
+
+chatSchema.index({ participants: 1 });
+chatSchema.index({ claimId: 1 });
 
 module.exports = mongoose.model('Chat', chatSchema);

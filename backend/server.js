@@ -6,7 +6,6 @@ const http = require('http');
 const { Server } = require('socket.io');
 const connectDB = require('./config/db');
 
-// Load env vars
 dotenv.config();
 
 const app = express();
@@ -14,7 +13,7 @@ const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
         origin: "http://localhost:3000",
-        methods: ["GET", "POST"],
+        methods: ["GET", "POST", "PUT", "DELETE"],
         credentials: true
     }
 });
@@ -22,34 +21,25 @@ const io = new Server(server, {
 // Socket.IO connection handling
 io.on('connection', (socket) => {
     console.log('New client connected:', socket.id);
-    
-    // User joins their own room
+
+    // User joins their personal notification room
     socket.on('setup', (userId) => {
         socket.join(userId);
         console.log('User joined room:', userId);
     });
-    
-    // Join chat room
+
+    // Join a chat room
     socket.on('join_chat', (chatId) => {
         socket.join(chatId);
         console.log('Joined chat room:', chatId);
     });
-    
-    // Leave chat room
+
+    // Leave a chat room
     socket.on('leave_chat', (chatId) => {
         socket.leave(chatId);
         console.log('Left chat room:', chatId);
     });
-    
-    // New message
-    socket.on('new_message', (message) => {
-        const chatId = message.chatId;
-        console.log('New message in chat:', chatId);
-        
-        // Send to all users in the chat room except sender
-        socket.to(chatId).emit('message_received', message);
-    });
-    
+
     socket.on('disconnect', () => {
         console.log('Client disconnected:', socket.id);
     });
@@ -61,16 +51,20 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Make io accessible to controllers
+app.set('io', io);
+
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/messages', require('./routes/messageRoutes'));
 app.use('/api/chats', require('./routes/chatRoutes'));
+app.use('/api/claims', require('./routes/claimRoutes'));
 app.use('/api/contact', require('./routes/contactRoutes'));
-app.use('/api/return', require('./routes/returnRoutes'));
 app.use('/api/lost', require('./routes/lostItemRoutes'));
 app.use('/api/found', require('./routes/foundItemRoutes'));
 app.use('/api/notices', require('./routes/noticeRoutes'));
+app.use('/api/reports', require('./routes/reportRoutes'));
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -1,104 +1,88 @@
-import { useState, useEffect } from 'react';
-import { getUserChats } from '../../api/chat';
-import { useAuth } from '../../context/AuthContext';
-import { formatDistanceToNow } from 'date-fns';
-import { User, Lock } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { MessageCircle, Package, Lock } from 'lucide-react';
+import { getMyChats } from '../../api/claims';
 
-const ChatList = ({ selectedChat, onSelectChat, refreshTrigger }) => {
-    useAuth();
+const formatTime = (d) => {
+    if (!d) return '';
+    const now = new Date();
+    const dt = new Date(d);
+    const diff = (now - dt) / 1000;
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
+const ChatList = ({ selectedChatId, onSelectChat }) => {
     const [chats, setChats] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchChats = async () => {
+        const load = async () => {
             try {
-                const data = await getUserChats();
-                // Assumes backend returns an array of chat objects
-                setChats(data);
-            } catch (error) {
-                console.error('Failed to fetch chats:', error);
+                const res = await getMyChats();
+                setChats(res.data || []);
+            } catch {
+                // silent
             } finally {
                 setLoading(false);
             }
         };
+        load();
+        const interval = setInterval(load, 15000);
+        return () => clearInterval(interval);
+    }, []);
 
-        fetchChats();
-    }, [refreshTrigger]);
+    if (loading) return (
+        <div className="flex-1 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" />
+        </div>
+    );
 
-    if (loading) {
-        return (
-            <div className="flex-1 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
-            </div>
-        );
-    }
-
-    if (chats.length === 0) {
-        return (
-            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-gray-500">
-                <span className="text-3xl mb-4">📭</span>
-                <p>No messages yet.</p>
-                <p className="text-sm mt-2 text-gray-400">Chats will appear here when you or others inquire about an item.</p>
-            </div>
-        );
-    }
+    if (chats.length === 0) return (
+        <div className="flex-1 flex flex-col items-center justify-center text-center p-6">
+            <MessageCircle className="w-10 h-10 text-gray-200 mb-3" />
+            <p className="text-sm font-semibold text-gray-400">No conversations yet</p>
+            <p className="text-xs text-gray-300 mt-1">When a claim is approved, a chat will appear here.</p>
+        </div>
+    );
 
     return (
-        <div className="flex-1 overflow-y-auto">
-            <h2 className="text-xl font-bold bg-white text-gray-800 p-4 border-b border-gray-100 flex items-center gap-2">
-                 Messages 
-                 <span className="text-sm bg-gray-100 px-2 py-1 rounded-full text-gray-600 font-medium">{chats.length}</span>
-            </h2>
-            <div className="divide-y divide-gray-100">
-                {chats.map((chat) => {
-                    // Find the other participant in the chat
-                    const otherUser = chat.otherUser;
-                    const isSelected = selectedChat?._id === chat._id;
-                    const lastMsg = chat.lastMessage;
+        <div className="flex-1 overflow-y-auto divide-y divide-gray-100">
+            {chats.map(chat => {
+                const isSelected = chat._id === selectedChatId;
+                const isLocked = chat.status === 'LOCKED';
+                const itemImg = chat.item?.images?.[0];
 
-                    return (
-                        <div 
-                            key={chat._id}
-                            onClick={() => onSelectChat(chat)}
-                            className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors flex items-center gap-3 ${isSelected ? 'bg-primary-50 border-l-4 border-primary-500' : 'border-l-4 border-transparent'}`}
-                        >
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-gray-600 flex-shrink-0 relative">
-                                {otherUser?.fullName ? otherUser.fullName.charAt(0).toUpperCase() : <User />}
-                                {chat.isLocked && (
-                                    <div className="absolute -bottom-1 -right-1 bg-gray-500 rounded-full p-1 border-2 border-white">
-                                        <Lock className="w-3 h-3 text-white" />
-                                    </div>
-                                )}
-                            </div>
-                            
-                            <div className="flex-1 min-w-0">
-                                <div className="flex justify-between items-baseline mb-1">
-                                    <h4 className={`font-medium truncate ${isSelected ? 'text-primary-700' : 'text-gray-900'}`}>
-                                        {otherUser?.fullName || 'Unknown User'}
-                                    </h4>
-                                    {lastMsg && lastMsg.createdAt && (
-                                        <span className="text-xs text-gray-400 flex-shrink-0">
-                                            {formatDistanceToNow(new Date(lastMsg.createdAt), { addSuffix: true })}
-                                        </span>
-                                    )}
-                                </div>
-                                <div className="flex justify-between items-center gap-2">
-                                    <p className={`text-sm truncate ${lastMsg?.content ? 'text-gray-600' : 'text-gray-400 italic'}`}>
-                                        {lastMsg?.content || 'No messages yet'}
-                                    </p>
-                                    
-                                    {/* Unread indicator could go here if the backend supports it */}
-                                </div>
-                                {chat.item && (
-                                    <p className="text-xs text-primary-600 truncate mt-1">
-                                        Re: {chat.item.name || chat.item.category || 'Item'}
-                                    </p>
-                                )}
-                            </div>
+                return (
+                    <button
+                        key={chat._id}
+                        onClick={() => onSelectChat(chat)}
+                        className={`w-full text-left px-4 py-3.5 flex items-center gap-3 transition-all hover:bg-gray-50 ${isSelected ? 'bg-blue-50 border-r-2 border-blue-500' : ''}`}
+                    >
+                        <div className="w-11 h-11 rounded-xl overflow-hidden bg-gray-100 shrink-0 flex items-center justify-center">
+                            {itemImg
+                                ? <img src={`http://localhost:5000${itemImg}`} alt="" className="w-full h-full object-cover" />
+                                : <Package className="w-5 h-5 text-gray-300" />}
                         </div>
-                    );
-                })}
-            </div>
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-0.5">
+                                <p className="text-sm font-semibold text-gray-800 truncate">
+                                    {chat.otherUser?.fullName || 'User'}
+                                </p>
+                                <span className="text-[10px] text-gray-400 shrink-0 ml-1">{formatTime(chat.lastMessageAt)}</span>
+                            </div>
+                            <p className="text-xs text-gray-400 truncate">{chat.item?.title || 'Item'}</p>
+                            <p className="text-xs text-gray-300 truncate mt-0.5">{chat.lastMessage || 'No messages yet'}</p>
+                        </div>
+                        {isLocked && (
+                            <span className="flex items-center gap-1 text-[10px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full font-semibold shrink-0">
+                                <Lock className="w-2.5 h-2.5" /> Closed
+                            </span>
+                        )}
+                    </button>
+                );
+            })}
         </div>
     );
 };

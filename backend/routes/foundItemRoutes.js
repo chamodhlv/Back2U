@@ -46,6 +46,20 @@ const upload = multer({
 
 // Routes
 router.get('/suggestions', getSuggestions);
+
+// Get current user's own found posts (including archived)
+router.get('/mine', protect, async (req, res) => {
+    try {
+        const FoundItem = require('../models/FoundItem');
+        const items = await FoundItem.find({ postedBy: req.user._id })
+            .sort({ createdAt: -1 })
+            .select('title images status isArchived createdAt category');
+        res.json({ success: true, data: items });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 router.route('/')
     .get(getFoundItems)               // GET /api/found  (public)
     .post(protect, upload.array('images', 5), createFoundItem); // POST /api/found

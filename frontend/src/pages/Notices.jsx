@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import API from '../api/axios';
 import {
@@ -92,7 +92,7 @@ const NoticeCard = ({ item, onView }) => (
         )}
         
         {/* Image / Banner */}
-        <div className="relative h-44 bg-amber-50/50 overflow-hidden">
+        <div className="relative h-64 bg-amber-50/50 overflow-hidden">
             {item.attachments && item.attachments.length > 0 && item.attachments[0].match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
                 <img
                     src={`http://localhost:5000${item.attachments[0]}`}
@@ -107,7 +107,7 @@ const NoticeCard = ({ item, onView }) => (
             <div
                 className={`absolute inset-0 flex items-center justify-center bg-gradient-to-br from-amber-50 to-orange-50 ${item.attachments && item.attachments.length > 0 && item.attachments[0].match(/\.(jpeg|jpg|gif|png|webp)$/i) ? 'hidden' : 'flex'}`}
             >
-                <Megaphone className={`w-12 h-12 ${item.priority === 'high' ? 'text-red-300' : 'text-amber-200'}`} />
+                <Megaphone className={`w-16 h-16 ${item.priority === 'high' ? 'text-red-300' : 'text-amber-200'}`} />
             </div>
             <div className="absolute top-3 right-3 flex flex-col gap-2 items-end">
                 <StatusBadge isActive={item.isActive} priority={item.priority} />
@@ -115,7 +115,7 @@ const NoticeCard = ({ item, onView }) => (
         </div>
 
         {/* Content */}
-        <div className="p-5 flex flex-col flex-1">
+        <div className="p-6 flex flex-col flex-1">
             <h3 className="font-semibold text-base text-surface-dark mb-1 truncate">{item.title}</h3>
             <p className="text-xs text-gray-400 mb-3 line-clamp-2">{item.content}</p>
 
@@ -128,10 +128,7 @@ const NoticeCard = ({ item, onView }) => (
                     <AlertTriangle className={`w-3.5 h-3.5 shrink-0 ${item.priority === 'high' ? 'text-red-500' : 'text-amber-500'}`} />
                     <span>{item.priority} Priority</span>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                    <span>Expires: {formatDate(item.expiryDate)}</span>
-                </div>
+
             </div>
 
             <button
@@ -187,7 +184,7 @@ const NoticeFormModal = ({ open, onClose, initial, onSuccess }) => {
         let cleanValue = type === 'checkbox' ? checked : value;
 
         // Specific special characters for Title, Content
-        const specialCharRegex = /[@#₹%&\-()\/\\?+":!']/g;
+        const specialCharRegex = /[@#₹%&\-()/\\?+":!']/g;
 
         if (['title', 'content'].includes(name) && type !== 'checkbox') {
             cleanValue = value.replace(specialCharRegex, '');
@@ -215,7 +212,7 @@ const NoticeFormModal = ({ open, onClose, initial, onSuccess }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         
-        const specialCharRegex = /[@#₹%&\-()\/\\?+":!']/;
+        const specialCharRegex = /[@#₹%&\-()/\\?+":!']/;
 
         if (specialCharRegex.test(form.title)) {
             setError("Title cannot contain special characters such as @ # ₹ % & - ( ) / ? + \" : ! '");
@@ -382,8 +379,11 @@ const DetailModal = ({ open, onClose, initial, onEdit, onArchive, currentUser })
     const [activeImage, setActiveImage] = useState(0);
 
     useEffect(() => {
-        if (open) setActiveImage(0);
-    }, [open, initial]);
+        if (open) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setActiveImage(0);
+        }
+    }, [open]);
 
     const item = initial;
     if (!open || !item) return null;
@@ -482,31 +482,13 @@ const DetailModal = ({ open, onClose, initial, onEdit, onArchive, currentUser })
                     )}
 
                     <div className="grid grid-cols-2 gap-4 mb-8">
-                        {item.expiryDate && (
-                            <div className="p-3 bg-red-50/50 rounded-xl border border-red-100">
-                                <span className="block text-[10px] uppercase tracking-wider font-bold text-red-400 mb-0.5">Expires</span>
-                                <span className="text-sm font-semibold text-red-700">{formatDate(item.expiryDate)}</span>
-                            </div>
-                        )}
                         <div className="p-3 bg-gray-50 rounded-xl">
                             <span className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-0.5">Posted By</span>
                             <span className="text-sm font-semibold text-gray-700">{item.createdBy?.fullName || 'Admin'}</span>
                         </div>
                     </div>
 
-                    {/* Owner actions */}
-                    {isAdmin && (
-                        <div className="border-t border-gray-100 pt-6 flex gap-3">
-                            <button onClick={onEdit}
-                                className="flex-1 py-3 bg-gray-100 border border-gray-200 rounded-xl text-sm font-medium text-surface-dark hover:bg-gray-200 transition-all flex items-center justify-center gap-2">
-                                <Edit3 className="w-4 h-4" /> Edit
-                            </button>
-                            <button onClick={onArchive}
-                                className="flex-1 py-3 bg-red-50 border border-red-200 rounded-xl text-sm font-medium text-red-600 hover:bg-red-100 transition-all flex items-center justify-center gap-2">
-                                <Trash2 className="w-4 h-4" /> Delete
-                            </button>
-                        </div>
-                    )}
+                    {/* Admin actions removed — managed from admin dashboard */}
                 </div>
             </div>
         </div>
@@ -517,7 +499,6 @@ const DetailModal = ({ open, onClose, initial, onEdit, onArchive, currentUser })
 
 const Notices = () => {
     const { user } = useAuth();
-    const navigate = useNavigate();
 
     // List state
     const [items, setItems] = useState([]);
@@ -535,21 +516,18 @@ const Notices = () => {
     const [showFilters, setShowFilters] = useState(false);
 
     // Modal state
-    const [showCreate, setShowCreate] = useState(false);
     const [showDetail, setShowDetail] = useState(false);
-    const [showDelete, setShowDelete] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
-    const [editMode, setEditMode] = useState(false);
 
     // Debounce search
     const searchTimer = useRef(null);
     const handleSearchChange = (val) => {
-        const specialCharRegex = /[@#₹%&\-()\/\\?+":!']/;
         let cleanVal = val;
+        const specialCharRegex = /[@#₹%&\-()/\\?+":!']/;
 
         if (specialCharRegex.test(val)) {
             showToast('Search bar cannot contain special characters', 'error');
-            cleanVal = val.replace(/[@#₹%&\-()\/\\?+":!']/g, '');
+            cleanVal = val.replace(/[@#₹%&\-()/\\?+":!']/g, '');
         }
         
         setSearch(cleanVal);
@@ -576,14 +554,18 @@ const Notices = () => {
             setItems(data.notices);
             setTotalPages(data.totalPages);
             setTotalItems(data.totalItems);
-        } catch (e) {
+        // eslint-disable-next-line no-unused-vars
+        } catch (error) {
             showToast('Failed to load notices', 'error');
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => { fetchItems(); }, [currentPage, search, category, priority, activeStatus]);
+    useEffect(() => {
+        fetchItems();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentPage, search, category, priority, activeStatus]);
 
     const showToast = (text, type = 'success') => {
         setToast({ text, type });
@@ -604,23 +586,8 @@ const Notices = () => {
         setShowDetail(true);
     };
 
-    const handleEdit = () => {
-        setShowDetail(false);
-        setEditMode(true);
-        setShowCreate(true);
-    };
-
     const handleDeleteConfirm = async () => {
-        try {
-            await API.delete(`/notices/${selectedItem._id}`);
-            setShowDelete(false);
-            setShowDetail(false);
-            setSelectedItem(null);
-            fetchItems();
-            showToast('Notice deleted successfully!');
-        } catch (e) {
-            showToast('Failed to delete notice', 'error');
-        }
+        // kept only for admin detail modal backward compat
     };
 
     const resetFilters = () => {
@@ -644,16 +611,7 @@ const Notices = () => {
                             <ArrowLeft className="w-4 h-4" /> Back to Home
                         </Link>
                     </div>
-                    {user?.role === 'admin' && (
-                        <button
-                            id="report-notice-btn"
-                            onClick={() => { setEditMode(false); setSelectedItem(null); setShowCreate(true); }}
-                            className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-medium text-sm hover:from-amber-600 hover:to-orange-600 transition-all shadow-md shadow-amber-500/20 flex items-center gap-2 self-start sm:self-auto"
-                        >
-                            <Plus className="w-4 h-4" />
-                            Create Notice
-                        </button>
-                    )}
+                    {/* Create Notice button removed — admin manages from dashboard */}
                 </div>
 
                 <div className="mb-6">
@@ -771,7 +729,7 @@ const Notices = () => {
                         </p>
                     </div>
                 ) : (
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         {items.map(item => (
                             <NoticeCard key={item._id} item={item} onView={handleView} />
                         ))}
@@ -801,46 +759,15 @@ const Notices = () => {
             </div>
 
             {/* Modals */}
-            <NoticeFormModal
-                open={showCreate}
-                onClose={() => { setShowCreate(false); setEditMode(false); setSelectedItem(null); }}
-                initial={editMode ? selectedItem : null}
-                onSuccess={handleFormSuccess}
-            />
 
             <DetailModal
                 open={showDetail}
                 initial={selectedItem}
                 onClose={() => { setShowDetail(false); setSelectedItem(null); }}
-                onEdit={handleEdit}
-                onArchive={() => { setShowDetail(false); setShowDelete(true); }}
+                onEdit={() => {}}
+                onArchive={() => {}}
                 currentUser={user}
             />
-
-            {/* Delete confirmation */}
-            {showDelete && selectedItem && (
-                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white border border-gray-200 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-                        <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
-                            <Trash2 className="w-6 h-6 text-red-500" />
-                        </div>
-                        <h3 className="text-lg font-bold text-center text-surface-dark mb-2">Delete this notice?</h3>
-                        <p className="text-sm text-gray-500 text-center mb-6">
-                            This notice will be permanently deleted and removed from the feed. This cannot be undone.
-                        </p>
-                        <div className="flex gap-3">
-                            <button onClick={() => setShowDelete(false)}
-                                className="flex-1 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-200 transition-all">
-                                Cancel
-                            </button>
-                            <button onClick={handleDeleteConfirm} id="confirm-delete-btn"
-                                className="flex-1 py-2.5 bg-red-500 text-white rounded-xl text-sm font-medium hover:bg-red-600 transition-all">
-                                Delete
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

@@ -9,7 +9,6 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import StudentDashboard from './pages/StudentDashboard';
 import AdminDashboard from './pages/AdminDashboard';
-import TestChat from './pages/TestChat';
 import LostItems from './pages/LostItems';
 import FoundItems from './pages/FoundItems';
 import Notices from './pages/Notices';
@@ -57,7 +56,7 @@ function App() {
             <Route path="/login" element={<AuthRedirect><Login /></AuthRedirect>} />
             <Route path="/register" element={<AuthRedirect><Register /></AuthRedirect>} />
             <Route path="/dashboard" element={<ProtectedRoute><StudentDashboard /></ProtectedRoute>} />
-            <Route path="/chat" element={<ProtectedRoute><TestChat /></ProtectedRoute>} />
+            <Route path="/chat" element={<Navigate to="/dashboard" replace />} />
             <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
             <Route path="/lost" element={<LostItems />} />
             <Route path="/found-items" element={<FoundItems />} />

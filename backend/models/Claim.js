@@ -2,13 +2,7 @@ const mongoose = require('mongoose');
 
 const claimSchema = new mongoose.Schema({
     itemId: {
-        type: String,
-        ref: 'Item',
-        required: true
-    },
-    claimantId: {
-        type: String,
-        ref: 'User',
+        type: mongoose.Schema.Types.ObjectId,
         required: true
     },
     itemType: {
@@ -16,36 +10,54 @@ const claimSchema = new mongoose.Schema({
         enum: ['lost', 'found'],
         required: true
     },
-    status: {
-        type: String,
-        enum: ['pending', 'approved', 'rejected', 'resolved'],
-        default: 'pending'
-    },
-    message: {
-        type: String,
+    claimantId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
         required: true
     },
-    proofDetails: {
+    status: {
         type: String,
-        default: ''
+        enum: ['pending', 'approved', 'rejected', 'claimed'],
+        default: 'pending'
     },
-    adminNotes: {
+    // Proof submitted by the claimant
+    proofDescription: {
         type: String,
-        default: ''
+        required: true,
+        trim: true
     },
-    resolvedAt: {
-        type: Date
+    uniqueIdentifiers: {
+        type: String,
+        default: '',
+        trim: true
     },
-    resolvedBy: {
+    descriptionDetails: {
+        type: String,
+        default: '',
+        trim: true
+    },
+    proofImages: [{ type: String }], // Array of uploaded file paths
+
+    // Reference to the auto-created chat (set after approval)
+    chatId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
-    }
+        ref: 'Chat',
+        default: null
+    },
+
+    // Dual-confirmation for handover
+    ownerConfirmed: { type: Boolean, default: false },
+    claimantConfirmed: { type: Boolean, default: false },
+
+    // Rejection reason (optional, set by post owner)
+    rejectionReason: { type: String, default: '' },
+
+    resolvedAt: { type: Date }
 }, {
     timestamps: true
 });
 
-// Add indexes for better query performance
-claimSchema.index({ itemId: 1, status: 1 });
+claimSchema.index({ itemId: 1, itemType: 1, status: 1 });
 claimSchema.index({ claimantId: 1, status: 1 });
 
 module.exports = mongoose.model('Claim', claimSchema);
