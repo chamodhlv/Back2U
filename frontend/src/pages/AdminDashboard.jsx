@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import API from "../api/axios";
@@ -18,6 +18,14 @@ import {
   AlertCircle,
   LogOut,
   UserCheck,
+  Megaphone,
+  Plus,
+  Image,
+  Tag,
+  Clock,
+  AlertTriangle,
+  Filter,
+  RefreshCw,
 } from "lucide-react";
 
 const AdminDashboard = () => {
@@ -44,6 +52,25 @@ const AdminDashboard = () => {
   const [formLoading, setFormLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("users");
 
+  // ─── Notices state ─────────────────────────────────────────
+  const CATEGORIES = ['alert', 'event', 'general', 'tips'];
+  const PRIORITIES = ['low', 'medium', 'high'];
+  const [notices, setNotices] = useState([]);
+  const [noticesLoading, setNoticesLoading] = useState(false);
+  const [noticesPage, setNoticesPage] = useState(1);
+  const [noticesTotalPages, setNoticesTotalPages] = useState(1);
+  const [noticesTotalItems, setNoticesTotalItems] = useState(0);
+  const [showNoticeModal, setShowNoticeModal] = useState(false);
+  const [editingNotice, setEditingNotice] = useState(null);
+  const [showDeleteNotice, setShowDeleteNotice] = useState(false);
+  const [selectedNotice, setSelectedNotice] = useState(null);
+  const [noticeForm, setNoticeForm] = useState({ title: '', content: '', category: 'general', priority: 'low', expiryDate: '', isActive: true });
+  const [noticeFiles, setNoticeFiles] = useState([]);
+  const [noticePreviews, setNoticePreviews] = useState([]);
+  const [noticeFormLoading, setNoticeFormLoading] = useState(false);
+  const [noticeFormError, setNoticeFormError] = useState('');
+  const noticeFileRef = useRef();
+
   const [createForm, setCreateForm] = useState({
     studentId: "",
     fullName: "",
@@ -64,7 +91,106 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     fetchUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, searchTerm, roleFilter, statusFilter]);
+
+  useEffect(() => {
+    if (activeTab === 'notices') fetchNotices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, noticesPage]);
+
+  const fetchNotices = async () => {
+    setNoticesLoading(true);
+    try {
+      const { data } = await API.get(`/notices?page=${noticesPage}&limit=10`);
+      setNotices(data.notices);
+      setNoticesTotalPages(data.totalPages);
+      setNoticesTotalItems(data.totalItems);
+    } catch { /* ignore */ } finally {
+      setNoticesLoading(false);
+    }
+  };
+
+  const openNoticeCreate = () => {
+    setEditingNotice(null);
+    setNoticeForm({ title: '', content: '', category: 'general', priority: 'low', expiryDate: '', isActive: true });
+    setNoticeFiles([]);
+    setNoticePreviews([]);
+    setNoticeFormError('');
+    setShowNoticeModal(true);
+  };
+
+  const openNoticeEdit = (n) => {
+    setEditingNotice(n);
+    setNoticeForm({
+      title: n.title || '',
+      content: n.content || '',
+      category: n.category || 'general',
+      priority: n.priority || 'low',
+      expiryDate: n.expiryDate ? new Date(n.expiryDate).toISOString().slice(0, 16) : '',
+      isActive: n.isActive !== undefined ? n.isActive : true,
+    });
+    setNoticePreviews(n.attachments ? n.attachments.map(i => `http://localhost:5000${i}`) : []);
+    setNoticeFiles([]);
+    setNoticeFormError('');
+    setShowNoticeModal(true);
+  };
+
+  const handleNoticeFormChange = (e) => {
+    const { id, value, type, checked } = e.target;
+    const name = id.replace('adm-notice-', '');
+    setNoticeForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+  };
+
+  const handleNoticeFileChange = (e) => {
+    const selected = Array.from(e.target.files);
+    setNoticeFiles(selected);
+    const newPrev = selected.map(f => f.type.startsWith('image/') ? URL.createObjectURL(f) : 'document');
+    if (!editingNotice) {
+      setNoticePreviews(newPrev);
+    } else {
+      setNoticePreviews(prev => [...prev.filter(p => typeof p === 'string' && p.startsWith('http://localhost')), ...newPrev]);
+    }
+  };
+
+  const handleNoticeSubmit = async (e) => {
+    e.preventDefault();
+    setNoticeFormLoading(true);
+    setNoticeFormError('');
+    try {
+      const formData = new FormData();
+      Object.entries(noticeForm).forEach(([k, v]) => { if (v !== undefined && v !== null) formData.append(k, v); });
+      noticeFiles.forEach(f => formData.append('attachments', f));
+      if (editingNotice) {
+        await API.put(`/notices/${editingNotice._id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      } else {
+        await API.post('/notices', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      }
+      setShowNoticeModal(false);
+      setMessage({ text: editingNotice ? 'Notice updated!' : 'Notice created!', type: 'success' });
+      setTimeout(() => setMessage({ text: '', type: '' }), 3000);
+      fetchNotices();
+    } catch (err) {
+      setNoticeFormError(err.response?.data?.message || 'Failed to save notice');
+    } finally {
+      setNoticeFormLoading(false);
+    }
+  };
+
+  const handleNoticeDelete = async () => {
+    try {
+      await API.delete(`/notices/${selectedNotice._id}`);
+      setShowDeleteNotice(false);
+      setSelectedNotice(null);
+      setMessage({ text: 'Notice deleted!', type: 'success' });
+      setTimeout(() => setMessage({ text: '', type: '' }), 3000);
+      fetchNotices();
+    } catch {
+      setMessage({ text: 'Failed to delete notice', type: 'error' });
+    }
+  };
+
+  const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
 
   const fetchUsers = async () => {
     try {
@@ -88,6 +214,7 @@ const AdminDashboard = () => {
         students: all.filter((u) => u.role === "student").length,
         admins: all.filter((u) => u.role === "admin").length,
       });
+    // eslint-disable-next-line no-unused-vars
     } catch (error) {
       setMessage({ text: "Failed to load users", type: "error" });
     } finally {
@@ -208,6 +335,7 @@ const AdminDashboard = () => {
       icon: <LayoutDashboard className="w-5 h-5" />,
     },
     { id: "users", label: "Users", icon: <Users className="w-5 h-5" /> },
+    { id: "notices", label: "Notices", icon: <Megaphone className="w-5 h-5" /> },
   ];
 
   const statCards = [
@@ -393,6 +521,16 @@ const AdminDashboard = () => {
                       <p className="text-xs text-gray-500">
                         View, edit, or remove users
                       </p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('notices'); openNoticeCreate(); }}
+                    className="p-4 bg-amber-50 border border-amber-200/60 rounded-xl flex items-center gap-3 hover:bg-amber-100/50 transition-all"
+                  >
+                    <Megaphone className="w-5 h-5 text-amber-500" />
+                    <div className="text-left">
+                      <p className="text-sm font-medium text-surface-dark">Create Notice</p>
+                      <p className="text-xs text-gray-500">Broadcast a campus notice</p>
                     </div>
                   </button>
                 </div>
@@ -603,6 +741,101 @@ const AdminDashboard = () => {
                       >
                         <ChevronRight className="w-4 h-4" />
                       </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Notices Tab */}
+          {activeTab === "notices" && (
+            <>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div>
+                  <h1 className="text-2xl font-bold text-surface-dark">Notice Management</h1>
+                  <p className="text-gray-500 text-sm mt-1">{noticesTotalItems} total notices</p>
+                </div>
+                <button
+                  onClick={openNoticeCreate}
+                  className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-medium text-sm hover:from-amber-600 hover:to-orange-600 transition-all shadow-md shadow-amber-500/20 flex items-center gap-2 self-start"
+                >
+                  <Plus className="w-4 h-4" /> Create Notice
+                </button>
+              </div>
+
+              <div className="bg-white border border-gray-200/60 rounded-2xl overflow-hidden shadow-sm">
+                {noticesLoading ? (
+                  <div className="flex items-center justify-center py-20">
+                    <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : notices.length === 0 ? (
+                  <div className="text-center py-20">
+                    <Megaphone className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-400">No notices yet</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-gray-200/60 bg-gray-50/50">
+                          <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 uppercase tracking-wider">Notice</th>
+                          <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 uppercase tracking-wider">Category</th>
+                          <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 uppercase tracking-wider">Priority</th>
+                          <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 uppercase tracking-wider">Status</th>
+                          <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 uppercase tracking-wider">Expires</th>
+                          <th className="text-right text-xs text-gray-500 font-medium px-6 py-4 uppercase tracking-wider">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {notices.map((n) => (
+                          <tr key={n._id} className="border-b border-gray-100 hover:bg-gray-50/50 transition-colors">
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                {n.attachments?.[0] && n.attachments[0].match(/\.(jpeg|jpg|gif|png|webp)$/i)
+                                  ? <img src={`http://localhost:5000${n.attachments[0]}`} alt="" className="w-10 h-10 rounded-lg object-cover border border-gray-100 shrink-0" />
+                                  : <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center shrink-0"><Megaphone className="w-5 h-5 text-amber-300" /></div>
+                                }
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium text-surface-dark truncate">{n.title}</p>
+                                  <p className="text-xs text-gray-400 truncate max-w-[200px]">{n.content}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="px-2.5 py-1 bg-amber-50 text-amber-600 border border-amber-200/60 rounded-lg text-xs font-medium capitalize">{n.category}</span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2.5 py-1 rounded-lg text-xs font-medium capitalize ${
+                                n.priority === 'high' ? 'bg-red-50 text-red-600 border border-red-200' : n.priority === 'medium' ? 'bg-amber-50 text-amber-600 border border-amber-200' : 'bg-gray-50 text-gray-600 border border-gray-200'
+                              }`}>{n.priority}</span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`inline-flex items-center gap-1.5 text-xs ${n.isActive ? 'text-emerald-600' : 'text-gray-400'}`}>
+                                <span className={`w-2 h-2 rounded-full ${n.isActive ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                                {n.isActive ? 'Active' : 'Expired'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4"><span className="text-sm text-gray-600">{formatDate(n.expiryDate)}</span></td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center justify-end gap-1">
+                                <button onClick={() => openNoticeEdit(n)} className="p-2 text-gray-400 hover:text-amber-500 hover:bg-gray-100 rounded-lg transition-all" title="Edit"><Edit3 className="w-4 h-4" /></button>
+                                <button onClick={() => { setSelectedNotice(n); setShowDeleteNotice(true); }} className="p-2 text-gray-400 hover:text-red-500 hover:bg-gray-100 rounded-lg transition-all" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {noticesTotalPages > 1 && (
+                  <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200/60">
+                    <p className="text-sm text-gray-500">Page {noticesPage} of {noticesTotalPages}</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setNoticesPage(p => Math.max(1, p - 1))} disabled={noticesPage === 1} className="p-2 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 transition-all disabled:opacity-30"><ChevronLeft className="w-4 h-4" /></button>
+                      <button onClick={() => setNoticesPage(p => Math.min(noticesTotalPages, p + 1))} disabled={noticesPage === noticesTotalPages} className="p-2 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 transition-all disabled:opacity-30"><ChevronRight className="w-4 h-4" /></button>
                     </div>
                   </div>
                 )}
@@ -920,6 +1153,103 @@ const AdminDashboard = () => {
               >
                 Delete
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create/Edit Notice Modal */}
+      {showNoticeModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 max-w-xl w-full shadow-2xl max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-bold text-surface-dark">{editingNotice ? 'Edit Notice' : 'Create Notice'}</h3>
+                <p className="text-xs text-gray-500 mt-0.5">{editingNotice ? 'Update notice details.' : 'Broadcast a new campus notice.'}</p>
+              </div>
+              <button onClick={() => setShowNoticeModal(false)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"><X className="w-5 h-5" /></button>
+            </div>
+            {noticeFormError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-sm text-red-600">
+                <AlertCircle className="w-4 h-4 shrink-0" /> {noticeFormError}
+              </div>
+            )}
+            <form onSubmit={handleNoticeSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1.5">Title <span className="text-red-400">*</span></label>
+                <input id="adm-notice-title" type="text" value={noticeForm.title} onChange={handleNoticeFormChange} className={inputClass} placeholder="Notice title" required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1.5">Content <span className="text-red-400">*</span></label>
+                <textarea id="adm-notice-content" value={noticeForm.content} onChange={handleNoticeFormChange} className={`${inputClass} resize-none`} rows={4} placeholder="Notice details..." required />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1.5">Category</label>
+                  <select id="adm-notice-category" value={noticeForm.category} onChange={handleNoticeFormChange} className={`${inputClass} capitalize`}>
+                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1.5">Priority</label>
+                  <select id="adm-notice-priority" value={noticeForm.priority} onChange={handleNoticeFormChange} className={`${inputClass} capitalize`}>
+                    {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4 items-end">
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1.5">Expiry Date</label>
+                  <input id="adm-notice-expiryDate" type="datetime-local" value={noticeForm.expiryDate} onChange={handleNoticeFormChange} className={inputClass} />
+                </div>
+                {editingNotice && (
+                  <div className="flex items-center h-[46px] px-2 mb-1">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input id="adm-notice-isActive" type="checkbox" checked={noticeForm.isActive} onChange={handleNoticeFormChange} className="w-4 h-4 text-amber-500 rounded border-gray-300 focus:ring-amber-500" />
+                      <span className="text-sm font-medium text-gray-600">Active</span>
+                    </label>
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1.5">Attachments</label>
+                <div onClick={() => noticeFileRef.current.click()} className="border-2 border-dashed border-gray-300 rounded-xl p-5 text-center cursor-pointer hover:border-amber-400 hover:bg-amber-50/30 transition-all">
+                  <Image className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500">Click to upload files</p>
+                </div>
+                <input ref={noticeFileRef} type="file" multiple accept=".jpeg,.jpg,.png,.gif,.webp,.pdf,.doc,.docx" className="hidden" onChange={handleNoticeFileChange} />
+                {noticePreviews.length > 0 && (
+                  <div className="flex gap-2 mt-3 flex-wrap">
+                    {noticePreviews.map((src, i) => src === 'document'
+                      ? <div key={i} className="w-16 h-16 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-xs text-gray-500 font-medium">Doc {i+1}</div>
+                      : <img key={i} src={src} alt={`preview-${i}`} className="w-16 h-16 rounded-lg object-cover border border-gray-200" />
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowNoticeModal(false)} className="flex-1 py-3 bg-gray-100 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-200 transition-all">Cancel</button>
+                <button type="submit" disabled={noticeFormLoading} className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl text-sm font-medium hover:from-amber-600 hover:to-orange-600 transition-all shadow-md shadow-amber-500/20 disabled:opacity-50 flex items-center justify-center gap-2">
+                  {noticeFormLoading
+                    ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    : editingNotice ? <><Save className="w-4 h-4" /> Save</> : <><Megaphone className="w-4 h-4" /> Broadcast</>}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Notice Modal */}
+      {showDeleteNotice && selectedNotice && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4"><Trash2 className="w-6 h-6 text-red-500" /></div>
+            <h3 className="text-lg font-bold text-center text-surface-dark mb-2">Delete Notice?</h3>
+            <p className="text-sm text-gray-500 text-center mb-6">This notice will be permanently removed.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setShowDeleteNotice(false)} className="flex-1 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-200 transition-all">Cancel</button>
+              <button onClick={handleNoticeDelete} className="flex-1 py-2.5 bg-red-500 text-white rounded-xl text-sm font-medium hover:bg-red-600 transition-all">Delete</button>
             </div>
           </div>
         </div>

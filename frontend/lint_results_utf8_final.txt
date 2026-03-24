@@ -1,0 +1,36 @@
+﻿
+> frontend@0.0.0 lint
+> eslint .
+
+
+C:\Users\chamo\OneDrive\Desktop\Back2U\frontend\src\pages\AdminDashboard.jsx
+  92:14  error    'error' is defined but never used                                                  no-unused-vars
+  93:7   warning  Unused eslint-disable directive (no problems were reported from 'no-unused-vars')
+
+C:\Users\chamo\OneDrive\Desktop\Back2U\frontend\src\pages\FoundItems.jsx
+  556:18  error    'error' is defined but never used                                                  no-unused-vars
+  557:13  warning  Unused eslint-disable directive (no problems were reported from 'no-unused-vars')
+  597:18  error    'error' is defined but never used                                                  no-unused-vars
+  598:13  warning  Unused eslint-disable directive (no problems were reported from 'no-unused-vars')
+  643:18  error    'error' is defined but never used                                                  no-unused-vars
+  644:13  warning  Unused eslint-disable directive (no problems were reported from 'no-unused-vars')
+
+C:\Users\chamo\OneDrive\Desktop\Back2U\frontend\src\pages\LostItems.jsx
+  211:45  error    Unnecessary escape character: \/                                                   no-useless-escape
+  560:9   warning  Unused eslint-disable directive (no problems were reported from 'no-unused-vars')
+  602:9   warning  Unused eslint-disable directive (no problems were reported from 'no-unused-vars')
+  649:9   warning  Unused eslint-disable directive (no problems were reported from 'no-unused-vars')
+
+C:\Users\chamo\OneDrive\Desktop\Back2U\frontend\src\pages\Notices.jsx
+  581:9  warning  Unused eslint-disable directive (no problems were reported from 'no-unused-vars')
+  628:9  warning  Unused eslint-disable directive (no problems were reported from 'no-unused-vars')
+
+C:\Users\chamo\OneDrive\Desktop\Back2U\frontend\src\pages\admin\ReportManagement.jsx
+  25:14  error    'error' is defined but never used                                                  no-unused-vars
+  26:7   warning  Unused eslint-disable directive (no problems were reported from 'no-unused-vars')
+  44:14  error    'error' is defined but never used                                                  no-unused-vars
+  45:7   warning  Unused eslint-disable directive (no problems were reported from 'no-unused-vars')
+
+Γ£û 18 problems (7 errors, 11 warnings)
+  0 errors and 11 warnings potentially fixable with the `--fix` option.
+

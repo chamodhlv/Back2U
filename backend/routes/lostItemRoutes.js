@@ -46,6 +46,20 @@ const upload = multer({
 
 // Routes
 router.get('/suggestions', getSuggestions);
+
+// Get current user's own lost posts (including archived)
+router.get('/mine', protect, async (req, res) => {
+    try {
+        const LostItem = require('../models/LostItem');
+        const items = await LostItem.find({ postedBy: req.user._id })
+            .sort({ createdAt: -1 })
+            .select('title images status isArchived createdAt category');
+        res.json({ success: true, data: items });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 router.route('/')
     .get(getLostItems)               // GET /api/lost  (public)
     .post(protect, upload.array('images', 5), createLostItem); // POST /api/lost

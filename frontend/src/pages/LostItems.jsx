@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import API from '../api/axios';
+import ClaimPanel from '../components/claims/ClaimPanel';
 import {
     Search,
     Plus,
@@ -174,7 +175,7 @@ const LostItemFormModal = ({ open, onClose, initial, onSuccess }) => {
         let cleanValue = value;
 
         // Specific special characters for Title, Description, Location
-        const specialCharRegex = /[@#₹%&\-()\/\\?+":!']/g;
+        const specialCharRegex = /[@#₹%&\-()/\\?+":!']/g;
         // All non-alphabetic/non-space for Color, Brand
         const noSpecialOrNumbersRegex = /[^a-zA-Z\s]/g;
 
@@ -208,7 +209,7 @@ const LostItemFormModal = ({ open, onClose, initial, onSuccess }) => {
         
         // Reject specific special characters: @ # ₹ % & - ( ) / ? + " : ! '
         // We MUST escape the forward slash \/ and hyphen \-
-        const specialCharRegex = /[@#₹%&\-()\/\\?+":!']/;
+        const specialCharRegex = /[@#₹%&\-()/\\?+":!']/;
         
         // Color and brand: Reject ALL special characters and numbers. 
         const noSpecialOrNumbersRegex = /[^a-zA-Z\s]/;
@@ -375,12 +376,15 @@ const LostItemFormModal = ({ open, onClose, initial, onSuccess }) => {
 
 // ─── Detail Modal ────────────────────────────────────────────────────────────
 
-const DetailModal = ({ open, onClose, initial, onEdit, onArchive, currentUser }) => {
+const DetailModal = ({ open, onClose, initial, onEdit, onArchive, currentUser, onNavigateToChat }) => {
     const [activeImage, setActiveImage] = useState(0);
 
     useEffect(() => {
-        if (open) setActiveImage(0);
-    }, [open, initial]);
+        if (open) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setActiveImage(0);
+        }
+    }, [open]);
 
     const item = initial;
     if (!open || !item) return null;
@@ -389,13 +393,13 @@ const DetailModal = ({ open, onClose, initial, onEdit, onArchive, currentUser })
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col md:flex-row relative">
+            <div className="bg-white rounded-3xl w-full max-w-5xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col md:flex-row relative">
                 <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-white/80 backdrop-blur rounded-full text-gray-400 hover:text-gray-600 z-10 shadow-sm">
                     <X className="w-5 h-5" />
                 </button>
 
                 {/* Left: Images */}
-                <div className="md:w-1/2 flex flex-col bg-gray-100 relative max-h-[40vh] md:max-h-none">
+                <div className="md:w-[40%] flex flex-col bg-gray-100 relative max-h-[40vh] md:max-h-none">
                     <div className="relative flex-1 overflow-hidden min-h-[250px] md:min-h-[400px]">
                         {item.images && item.images.length > 0 ? (
                             <img
@@ -441,44 +445,59 @@ const DetailModal = ({ open, onClose, initial, onEdit, onArchive, currentUser })
                     )}
                 </div>
 
-                {/* Right: Info */}
-                <div className="md:w-1/2 p-6 md:p-8 overflow-y-auto">
-                    <div className="flex items-center gap-2 mb-4">
-                        <span className="text-xs text-gray-400 font-medium">#{item._id.slice(-6).toUpperCase()}</span>
-                    </div>
-
-                    <h2 className="text-2xl font-bold text-gray-800 mb-2">{item.title}</h2>
-                    <p className="text-sm text-gray-500 mb-6 leading-relaxed">{item.description}</p>
-
-                    <div className="grid grid-cols-2 gap-4 mb-8">
-                        {[
-                            { label: 'Category', value: item.category },
-                            { label: 'Location', value: item.lastSeenLocation },
-                            { label: 'Date Lost', value: formatDate(item.dateLost) },
-                            { label: 'Color', value: item.color || '—' },
-                            { label: 'Brand', value: item.brand || '—' },
-                            { label: 'Posted By', value: item.postedBy?.fullName || 'Anonymous' },
-                        ].map(({ label, value }) => (
-                            <div key={label} className="p-3 bg-gray-50 rounded-xl">
-                                <span className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-0.5">{label}</span>
-                                <span className="text-sm font-semibold text-gray-700">{value}</span>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Owner actions */}
-                    {isOwner && (
-                        <div className="border-t border-gray-100 pt-6 flex gap-3">
-                            <button onClick={onEdit}
-                                className="flex-1 py-3 bg-gray-100 border border-gray-200 rounded-xl text-sm font-medium text-surface-dark hover:bg-gray-200 transition-all flex items-center justify-center gap-2">
-                                <Edit3 className="w-4 h-4" /> Edit
-                            </button>
-                            <button onClick={onArchive}
-                                className="flex-1 py-3 bg-red-50 border border-red-200 rounded-xl text-sm font-medium text-red-600 hover:bg-red-100 transition-all flex items-center justify-center gap-2">
-                                <Trash2 className="w-4 h-4" /> Archive
-                            </button>
+                {/* Right: Info + Claims */}
+                <div className="md:w-[60%] flex flex-col">
+                    <div className="flex-1 overflow-y-auto p-6 md:p-8">
+                        <div className="flex items-center gap-2 mb-4">
+                            <span className="text-xs text-gray-400 font-medium">#{item._id.slice(-6).toUpperCase()}</span>
+                            {item.status === 'Claimed' && (
+                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold">Claimed</span>
+                            )}
                         </div>
-                    )}
+
+                        <h2 className="text-2xl font-bold text-gray-800 mb-2">{item.title}</h2>
+                        <p className="text-sm text-gray-500 mb-6 leading-relaxed">{item.description}</p>
+
+                        <div className="grid grid-cols-2 gap-4 mb-6">
+                            {[
+                                { label: 'Category', value: item.category },
+                                { label: 'Location', value: item.lastSeenLocation },
+                                { label: 'Date Lost', value: formatDate(item.dateLost) },
+                                { label: 'Color', value: item.color || '—' },
+                                { label: 'Brand', value: item.brand || '—' },
+                                { label: 'Posted By', value: item.postedBy?.fullName || 'Anonymous' },
+                            ].map(({ label, value }) => (
+                                <div key={label} className="p-3 bg-gray-50 rounded-xl">
+                                    <span className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-0.5">{label}</span>
+                                    <span className="text-sm font-semibold text-gray-700">{value}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Claims Panel */}
+                        {currentUser && (
+                            <ClaimPanel
+                                item={item}
+                                itemType="lost"
+                                currentUser={currentUser}
+                                onNavigateToChat={onNavigateToChat}
+                            />
+                        )}
+
+                        {/* Owner actions */}
+                        {isOwner && (
+                            <div className="border-t border-gray-100 pt-6 flex gap-3 mt-6">
+                                <button onClick={onEdit}
+                                    className="flex-1 py-3 bg-gray-100 border border-gray-200 rounded-xl text-sm font-medium text-surface-dark hover:bg-gray-200 transition-all flex items-center justify-center gap-2">
+                                    <Edit3 className="w-4 h-4" /> Edit
+                                </button>
+                                <button onClick={onArchive}
+                                    className="flex-1 py-3 bg-red-50 border border-red-200 rounded-xl text-sm font-medium text-red-600 hover:bg-red-100 transition-all flex items-center justify-center gap-2">
+                                    <Trash2 className="w-4 h-4" /> Archive
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
@@ -524,14 +543,16 @@ const LostItems = () => {
     // Debounce search
     const searchTimer = useRef(null);
     const handleSearchChange = (val) => {
-        // Validation: No special characters as per request
-        // Using the same specialized list or just rejecting common symbols
-        const specialCharRegex = /[@#₹%&\-()\/\\?+":!']/;
         let cleanVal = val;
+        // Regex for special characters that should not be in the search bar
+        // Note: Some characters like '-', '(', ')', '\', '?', '+' are special in regex and need to be escaped.
+        // Other characters like '@', '#', '₹', '%', '&', '"', ':', '!' are literal within a character class.
+        const specialCharRegex = /[@#₹%&\-()/\\?+":!']/;
 
         if (specialCharRegex.test(val)) {
             showToast('Search bar cannot contain special characters', 'error');
-            cleanVal = val.replace(/[@#₹%&\-()\/\\?+":!']/g, '');
+            // Remove special characters from the input value
+            cleanVal = val.replace(specialCharRegex, '');
         }
         
         setSearch(cleanVal);
@@ -552,7 +573,8 @@ const LostItems = () => {
             const { data } = await API.get(`/lost/suggestions?q=${q}`);
             setSuggestions(data);
             setShowSuggestions(data.length > 0);
-        } catch (e) {
+        // eslint-disable-next-line no-unused-vars
+        } catch (error) {
             console.error('Suggestions fetch error');
         }
     };
@@ -592,14 +614,18 @@ const LostItems = () => {
             setItems(data.items);
             setTotalPages(data.totalPages);
             setTotalItems(data.totalItems);
-        } catch (e) {
+        // eslint-disable-next-line no-unused-vars
+        } catch (error) {
             showToast('Failed to load items', 'error');
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => { fetchItems(); }, [currentPage, search, category, status, location, color, brand, dateFrom, dateTo]);
+    useEffect(() => {
+        fetchItems();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentPage, search, category, location, color, brand, dateFrom, dateTo]);
 
     const showToast = (text, type = 'success') => {
         setToast({ text, type });
@@ -634,7 +660,8 @@ const LostItems = () => {
             setSelectedItem(null);
             fetchItems();
             showToast('Item archived successfully!');
-        } catch (e) {
+        // eslint-disable-next-line no-unused-vars
+        } catch (error) {
             showToast('Failed to archive item', 'error');
         }
     };
@@ -770,7 +797,7 @@ const LostItems = () => {
                             <div>
                                 <label className="block text-xs text-gray-500 mb-1.5 font-medium">Location</label>
                                 <input type="text" value={location} onChange={e => { 
-                                        const cleanVal = e.target.value.replace(/[@#₹%&\-()\/\\?+":!']/g, '');
+                                        const cleanVal = e.target.value.replace(/[@#₹%&\-()/\\?+":!']/g, '');
                                         setLocation(cleanVal); 
                                         setCurrentPage(1); 
                                     }}
@@ -883,6 +910,10 @@ const LostItems = () => {
                 onEdit={handleEdit}
                 onArchive={() => { setShowDetail(false); setShowDelete(true); }}
                 currentUser={user}
+                onNavigateToChat={(chatId) => {
+                    setShowDetail(false);
+                    navigate('/dashboard', { state: { tab: 'messages', chatId } });
+                }}
             />
 
             {/* Delete confirmation */}

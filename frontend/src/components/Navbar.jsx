@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Menu, X, Search, LogOut, User, LayoutDashboard } from 'lucide-react';
+import { Menu, X, Search, LogOut, User, LayoutDashboard, MessageCircle } from 'lucide-react';
 
 const Navbar = () => {
     const { user, logout } = useAuth();
@@ -37,10 +37,22 @@ const Navbar = () => {
                             Home
                         </Link>
                         <Link
+                            to="/found-items"
+                            className="px-4 py-2 text-sm text-gray-600 hover:text-surface-dark rounded-lg hover:bg-gray-100 transition-all"
+                        >
+                            Found
+                        </Link>
+                        <Link
                             to="/lost"
                             className="px-4 py-2 text-sm text-gray-600 hover:text-surface-dark rounded-lg hover:bg-gray-100 transition-all"
                         >
                             Lost
+                        </Link>
+                        <Link
+                            to="/notices"
+                            className="px-4 py-2 text-sm text-gray-600 hover:text-surface-dark rounded-lg hover:bg-gray-100 transition-all"
+                        >
+                            Notices
                         </Link>
 
                         {user ? (
@@ -52,6 +64,7 @@ const Navbar = () => {
                                     <LayoutDashboard className="w-4 h-4" />
                                     Dashboard
                                 </Link>
+                               
                                 <div className="flex items-center gap-3 ml-4 pl-4 border-l border-gray-200">
                                     <div className="flex items-center gap-2">
                                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-sm font-semibold text-white">
@@ -108,11 +121,25 @@ const Navbar = () => {
                             Home
                         </Link>
                         <Link
+                            to="/found-items"
+                            onClick={() => setMobileOpen(false)}
+                            className="block px-4 py-3 text-sm text-gray-600 hover:text-surface-dark rounded-lg hover:bg-gray-100 transition-all"
+                        >
+                            Found
+                        </Link>
+                        <Link
                             to="/lost"
                             onClick={() => setMobileOpen(false)}
                             className="block px-4 py-3 text-sm text-gray-600 hover:text-surface-dark rounded-lg hover:bg-gray-100 transition-all"
                         >
                             Lost
+                        </Link>
+                        <Link
+                            to="/notices"
+                            onClick={() => setMobileOpen(false)}
+                            className="block px-4 py-3 text-sm text-gray-600 hover:text-surface-dark rounded-lg hover:bg-gray-100 transition-all"
+                        >
+                            Notices
                         </Link>
                         {user ? (
                             <>
@@ -123,6 +150,7 @@ const Navbar = () => {
                                 >
                                     Dashboard
                                 </Link>
+                                
                                 <button
                                     onClick={handleLogout}
                                     className="w-full text-left px-4 py-3 text-sm text-danger-500 hover:text-danger-600 rounded-lg hover:bg-gray-100 transition-all"
