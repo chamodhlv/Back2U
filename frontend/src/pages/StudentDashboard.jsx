@@ -120,6 +120,16 @@ const StudentDashboard = () => {
             const payload = { fullName: editForm.fullName, email: editForm.email };
             if (editForm.password) payload.password = editForm.password;
 
+            if (editForm.fullName.length > 30) {
+                setMessage({ text: 'Full Name must be 30 characters or less', type: 'error' });
+                return;
+            }
+
+            if (!/^[a-zA-Z\s]+$/.test(editForm.fullName)) {
+                setMessage({ text: 'Full Name must only contain English letters and spaces', type: 'error' });
+                return;
+            }
+
             const { data } = await API.put('/users/profile', payload);
             setProfile(data);
             updateUser(data);
@@ -363,8 +373,9 @@ const StudentDashboard = () => {
                                                 <input
                                                     type="text"
                                                     value={editForm.fullName}
-                                                    onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })}
+                                                    onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value.replace(/[^a-zA-Z\s]/g, '') })}
                                                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-surface-dark focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 focus:bg-white transition-all"
+                                                    maxLength={30}
                                                 />
                                             </div>
                                             <div>

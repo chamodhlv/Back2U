@@ -226,6 +226,21 @@ const AdminDashboard = () => {
     e.preventDefault();
     setFormLoading(true);
     try {
+      if (createForm.studentId.length !== 10) {
+        setMessage({ text: 'ID should be exactly 10 characters', type: 'error' });
+        setFormLoading(false);
+        return;
+      }
+      if (createForm.fullName.length > 30) {
+        setMessage({ text: 'Full Name must be 30 characters or less', type: 'error' });
+        setFormLoading(false);
+        return;
+      }
+      if (!/^[a-zA-Z\s]+$/.test(createForm.fullName)) {
+        setMessage({ text: 'Full Name must only contain English letters and spaces', type: 'error' });
+        setFormLoading(false);
+        return;
+      }
       await API.post("/users", createForm);
       setShowCreateModal(false);
       setCreateForm({
@@ -253,6 +268,17 @@ const AdminDashboard = () => {
     e.preventDefault();
     setFormLoading(true);
     try {
+      const nameToValidate = editForm.fullName || selectedUser.fullName;
+      if (nameToValidate.length > 30) {
+        setMessage({ text: 'Full Name must be 30 characters or less', type: 'error' });
+        setFormLoading(false);
+        return;
+      }
+      if (!/^[a-zA-Z\s]+$/.test(nameToValidate)) {
+        setMessage({ text: 'Full Name must only contain English letters and spaces', type: 'error' });
+        setFormLoading(false);
+        return;
+      }
       // Always include all required fields, fallback to selectedUser values
       const payload = {
         studentId: selectedUser.studentId,
@@ -861,6 +887,12 @@ const AdminDashboard = () => {
               </button>
             </div>
             <form onSubmit={handleCreate} className="space-y-4">
+              {message.text && (
+                <div className={`p-3 rounded-lg text-xs flex items-center gap-2 ${message.type === 'success' ? 'bg-success-50 text-success-600' : 'bg-danger-50 text-danger-600'}`}>
+                  {message.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                  {message.text}
+                </div>
+              )}
               <div>
                 <label className="block text-sm text-gray-600 font-medium mb-1.5">
                   Student ID
@@ -873,6 +905,18 @@ const AdminDashboard = () => {
                   }
                   className={inputClass}
                   placeholder="e.g. IT23543964"
+                  maxLength={10}
+                  minLength={10}
+                  onInvalid={(e) => {
+                    if (e.target.validity.tooShort || e.target.validity.patternMismatch) {
+                      e.target.setCustomValidity('ID should be exactly 10 characters');
+                    } else if (e.target.validity.valueMissing) {
+                      e.target.setCustomValidity('Please fill out this field.');
+                    }
+                  }}
+                  onInput={(e) => {
+                    e.target.setCustomValidity('');
+                  }}
                   required
                 />
               </div>
@@ -884,10 +928,11 @@ const AdminDashboard = () => {
                   type="text"
                   value={createForm.fullName}
                   onChange={(e) =>
-                    setCreateForm({ ...createForm, fullName: e.target.value })
+                    setCreateForm({ ...createForm, fullName: e.target.value.replace(/[^a-zA-Z\s]/g, '') })
                   }
                   className={inputClass}
                   placeholder="John Doe"
+                  maxLength={30}
                   required
                 />
               </div>
@@ -999,6 +1044,12 @@ const AdminDashboard = () => {
               </button>
             </div>
             <form onSubmit={handleEdit} className="space-y-4">
+              {message.text && (
+                <div className={`p-3 rounded-lg text-xs flex items-center gap-2 ${message.type === 'success' ? 'bg-success-50 text-success-600' : 'bg-danger-50 text-danger-600'}`}>
+                  {message.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                  {message.text}
+                </div>
+              )}
               <div>
                 <label className="block text-sm text-gray-600 font-medium mb-1.5">
                   Full Name
@@ -1007,9 +1058,10 @@ const AdminDashboard = () => {
                   type="text"
                   value={editForm.fullName}
                   onChange={(e) =>
-                    setEditForm({ ...editForm, fullName: e.target.value })
+                    setEditForm({ ...editForm, fullName: e.target.value.replace(/[^a-zA-Z\s]/g, '') })
                   }
                   className={inputClass}
+                  maxLength={30}
                   required
                 />
               </div>
