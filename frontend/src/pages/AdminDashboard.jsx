@@ -64,7 +64,6 @@ const AdminDashboard = () => {
       setActiveTab(location.state.tab);
     }
   }, [location.state]);
-
   // ─── Reports state ─────────────────────────────────────────
   const [reports, setReports] = useState([]);
   const [reportsLoading, setReportsLoading] = useState(false);

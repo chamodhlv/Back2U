@@ -86,7 +86,6 @@ export default function ChatBot() {
   const bottomRef = useRef(null);
 
   const push = (msg) => setMessages((prev) => [...prev, msg]);
-
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
