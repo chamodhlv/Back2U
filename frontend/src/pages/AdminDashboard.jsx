@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import API from "../api/axios";
 import {
   Users,
@@ -36,6 +36,7 @@ import {
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [users, setUsers] = useState([]);
   const [stats, setStats] = useState({
     total: 0,
@@ -57,6 +58,12 @@ const AdminDashboard = () => {
   const [formLoading, setFormLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("users");
 
+  // Handle deep-link from notifications
+  useEffect(() => {
+    if (location.state?.tab) {
+      setActiveTab(location.state.tab);
+    }
+  }, [location.state]);
   // ─── Reports state ─────────────────────────────────────────
   const [reports, setReports] = useState([]);
   const [reportsLoading, setReportsLoading] = useState(false);
