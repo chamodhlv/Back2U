@@ -1,6 +1,6 @@
 const Message = require('../models/Message');
 const Chat = require('../models/Chat');
-
+const mongoose = require('mongoose');
 // @desc    Send a message
 // @route   POST /api/messages
 // @access  Private
@@ -8,12 +8,22 @@ exports.sendMessage = async (req, res) => {
     try {
         const { chatId, content } = req.body;
 
+        // Optionally validate that chatId is a valid ObjectId
+        if (!mongoose.Types.ObjectId.isValid(chatId)) {
+            return res.status(400).json({ success: false, message: 'Invalid chat ID format' });
+        }
+
         const chat = await Chat.findById(chatId);
         if (!chat) {
             return res.status(404).json({ success: false, message: 'Chat not found' });
         }
 
-        const isParticipant = chat.participants.some(p => p.toString() === req.user._id.toString());
+        // Debug logs (remove in production)
+        console.log('Chat participants:', chat.participants.map(p => p.toString()));
+        console.log('Current user ID:', req.user._id.toString());
+
+        // Use .equals() for robust comparison (handles both ObjectId and string)
+        const isParticipant = chat.participants.some(p => p.equals(req.user._id));
         if (!isParticipant) {
             return res.status(403).json({ success: false, message: 'You are not a participant in this chat' });
         }
@@ -36,7 +46,7 @@ exports.sendMessage = async (req, res) => {
         // Increment unread for all other participants
         const unreadCount = chat.unreadCount || new Map();
         chat.participants.forEach(pId => {
-            if (pId.toString() !== req.user._id.toString()) {
+            if (!pId.equals(req.user._id)) {
                 unreadCount.set(pId.toString(), (unreadCount.get(pId.toString()) || 0) + 1);
             }
         });
@@ -67,12 +77,16 @@ exports.getMessages = async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 50;
 
+        if (!mongoose.Types.ObjectId.isValid(chatId)) {
+            return res.status(400).json({ success: false, message: 'Invalid chat ID format' });
+        }
+
         const chat = await Chat.findById(chatId);
         if (!chat) {
             return res.status(404).json({ success: false, message: 'Chat not found' });
         }
 
-        const isParticipant = chat.participants.some(p => p.toString() === req.user._id.toString());
+        const isParticipant = chat.participants.some(p => p.equals(req.user._id));
         if (!isParticipant) {
             return res.status(403).json({ success: false, message: 'Not authorized' });
         }
@@ -91,6 +105,7 @@ exports.getMessages = async (req, res) => {
             pagination: { page, limit, total, pages: Math.ceil(total / limit) }
         });
     } catch (error) {
+        console.error('getMessages error:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 };
@@ -105,7 +120,7 @@ exports.editMessage = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Message not found' });
         }
 
-        if (message.senderId.toString() !== req.user._id.toString()) {
+        if (!message.senderId.equals(req.user._id)) {
             return res.status(403).json({ success: false, message: 'You can only edit your own messages' });
         }
 
@@ -130,7 +145,6 @@ exports.editMessage = async (req, res) => {
 
         const populated = await message.populate('senderId', 'fullName studentId');
 
-        // Emit update via Socket.IO
         const io = req.app.get('io');
         if (io) {
             io.to(message.chatId.toString()).emit('message_updated', populated);
@@ -138,6 +152,7 @@ exports.editMessage = async (req, res) => {
 
         res.status(200).json({ success: true, data: populated });
     } catch (error) {
+        console.error('editMessage error:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 };
@@ -152,7 +167,7 @@ exports.deleteMessage = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Message not found' });
         }
 
-        if (message.senderId.toString() !== req.user._id.toString()) {
+        if (!message.senderId.equals(req.user._id)) {
             return res.status(403).json({ success: false, message: 'You can only delete your own messages' });
         }
 
@@ -166,7 +181,6 @@ exports.deleteMessage = async (req, res) => {
         message.content = '[Message deleted]';
         await message.save();
 
-        // Emit delete via Socket.IO
         const io = req.app.get('io');
         if (io) {
             io.to(message.chatId.toString()).emit('message_deleted', { messageId: message._id });
@@ -174,6 +188,7 @@ exports.deleteMessage = async (req, res) => {
 
         res.status(200).json({ success: true, data: message });
     } catch (error) {
+        console.error('deleteMessage error:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 };

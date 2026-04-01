@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const claimSchema = new mongoose.Schema({
     itemId: {
-        type: mongoose.Schema.Types.ObjectId,
+        type: String,
         required: true
     },
     itemType: {
