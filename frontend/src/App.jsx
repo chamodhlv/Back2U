@@ -14,6 +14,7 @@ import LostItems from './pages/LostItems';
 import FoundItems from './pages/FoundItems';
 import Notices from './pages/Notices';
 import ChatBot from './pages/ChatBot';
+import Leaderboard from './pages/Leaderboard';
 
 const AuthRedirect = ({ children }) => {
   const { user } = useAuth();
@@ -52,6 +53,24 @@ function App() {
     <AuthProvider>
       <Router>
         <SocketInitializer>
+<<<<<<< HEAD
+          <Navbar />
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<AuthRedirect><Login /></AuthRedirect>} />
+            <Route path="/register" element={<AuthRedirect><Register /></AuthRedirect>} />
+            <Route path="/dashboard" element={<ProtectedRoute><StudentDashboard /></ProtectedRoute>} />
+            <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/chat" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/lost" element={<LostItems />} />
+            <Route path="/found-items" element={<FoundItems />} />
+            <Route path="/notices" element={<Notices />} />
+            <Route path="/chatbot" element={<ChatBot />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+          <ChatBot />
+=======
           <NotificationProvider>
             <Navbar />
             <Routes>
@@ -69,6 +88,7 @@ function App() {
             </Routes>
             <ChatBot />
           </NotificationProvider>
+>>>>>>> 9fc9740e0a54c8bc823eda0ffd93750894967bf0
         </SocketInitializer>
       </Router>
     </AuthProvider>

@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+<<<<<<< HEAD
+import { Menu, X, Search, LogOut, User, LayoutDashboard, MessageCircle, Trophy } from 'lucide-react';
+=======
 import { useNotifications } from '../context/NotificationContext';
 import { Menu, X, Search, LogOut, LayoutDashboard, Bell, FileText, MessageCircle, CheckCheck, GitMerge } from 'lucide-react';
 
@@ -93,6 +96,7 @@ const NotificationDropdown = ({ notifications, unreadCount, onNotifClick, onMark
         </div>
     </div>
 );
+>>>>>>> 9fc9740e0a54c8bc823eda0ffd93750894967bf0
 
 const Navbar = () => {
     const { user, logout } = useAuth();
@@ -192,6 +196,15 @@ const Navbar = () => {
                             className="px-4 py-2 text-sm text-gray-600 hover:text-surface-dark rounded-lg hover:bg-gray-100 transition-all"
                         >
                             Notices
+                        </Link>
+
+                        {/* NEW: Leaderboard link */}
+                        <Link
+                            to="/leaderboard"
+                            className="px-4 py-2 text-sm text-gray-600 hover:text-surface-dark rounded-lg hover:bg-gray-100 transition-all flex items-center gap-1"
+                        >
+                            <Trophy className="w-4 h-4" />
+                            Leaderboard
                         </Link>
 
                         {user ? (
@@ -330,6 +343,17 @@ const Navbar = () => {
                         >
                             Notices
                         </Link>
+
+                        {/* NEW: Leaderboard link in mobile */}
+                        <Link
+                            to="/leaderboard"
+                            onClick={() => setMobileOpen(false)}
+                            className="block px-4 py-3 text-sm text-gray-600 hover:text-surface-dark rounded-lg hover:bg-gray-100 transition-all flex items-center gap-2"
+                        >
+                            <Trophy className="w-4 h-4" />
+                            Leaderboard
+                        </Link>
+
                         {user ? (
                             <>
                                 <Link
