@@ -70,8 +70,8 @@ const claimSchema = new mongoose.Schema({
         enum: ['owner', 'finder', null],
         default: null,
         comment: 'Who confirmed the return (owner or finder)'
-    }
-    //  END GAMIFICATION FIELDS
+    },
+   
 }, {
     timestamps: true
 });

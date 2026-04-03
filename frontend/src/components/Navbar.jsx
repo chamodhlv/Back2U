@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Menu, X, Search, LogOut, User, LayoutDashboard, MessageCircle } from 'lucide-react';
+import { Menu, X, Search, LogOut, User, LayoutDashboard, MessageCircle, Trophy } from 'lucide-react';
 
 const Navbar = () => {
     const { user, logout } = useAuth();
@@ -53,6 +53,15 @@ const Navbar = () => {
                             className="px-4 py-2 text-sm text-gray-600 hover:text-surface-dark rounded-lg hover:bg-gray-100 transition-all"
                         >
                             Notices
+                        </Link>
+
+                        {/* NEW: Leaderboard link */}
+                        <Link
+                            to="/leaderboard"
+                            className="px-4 py-2 text-sm text-gray-600 hover:text-surface-dark rounded-lg hover:bg-gray-100 transition-all flex items-center gap-1"
+                        >
+                            <Trophy className="w-4 h-4" />
+                            Leaderboard
                         </Link>
 
                         {user ? (
@@ -141,6 +150,17 @@ const Navbar = () => {
                         >
                             Notices
                         </Link>
+
+                        {/* NEW: Leaderboard link in mobile */}
+                        <Link
+                            to="/leaderboard"
+                            onClick={() => setMobileOpen(false)}
+                            className="block px-4 py-3 text-sm text-gray-600 hover:text-surface-dark rounded-lg hover:bg-gray-100 transition-all flex items-center gap-2"
+                        >
+                            <Trophy className="w-4 h-4" />
+                            Leaderboard
+                        </Link>
+
                         {user ? (
                             <>
                                 <Link

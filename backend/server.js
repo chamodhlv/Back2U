@@ -7,6 +7,7 @@ const { Server } = require('socket.io');
 const connectDB = require('./config/db');
 const reportRoutes = require('./routes/reportRoutes');
 const chatbotRoutes = require('./routes/ChattRoutes');
+const gamificationRoutes = require('./routes/gamificationRoutes');
 
 dotenv.config();
 
@@ -68,6 +69,8 @@ app.use('/api/found', require('./routes/foundItemRoutes'));
 app.use('/api/notices', require('./routes/noticeRoutes'));
 app.use('/api/reports', reportRoutes);
 app.use('/api/chat', chatbotRoutes);
+app.use('/api/gamification', require('./routes/gamificationRoutes'));
+app.use('/api/leaderboard', require('./routes/leaderboardRoutes'));
 
 // Health chec
 app.get('/api/health', (req, res) => {
@@ -87,6 +90,10 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
     try {
         await connectDB();
+        
+        // 🕒 Initialize monthly points reset cron job (after DB is ready)
+        require('./jobs/monthlyReset');
+        
         const PORT = process.env.PORT || 5000;
         server.listen(PORT, () => {
             console.log(`Server running on port ${PORT}`);
