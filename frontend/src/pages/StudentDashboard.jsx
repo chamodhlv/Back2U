@@ -531,7 +531,7 @@ const fetchProfile = async () => {
                                                     >
                                                         <div className="h-32 bg-gray-100 relative">
                                                             {item.images?.[0]
-                                                                ? <img src={`http://localhost:5000${item.images[0]}`} alt="" className="w-full h-full object-cover" />
+                                                                ? <img src={item.images[0]} alt="" className="w-full h-full object-cover" />
                                                                 : <div className="w-full h-full flex items-center justify-center"><Package className="w-8 h-8 text-gray-300" /></div>}
                                                             <div className="absolute top-2 right-2 flex gap-1">
                                                                 {item.isArchived && (
@@ -572,7 +572,7 @@ const fetchProfile = async () => {
                                                     >
                                                         <div className="h-32 bg-gray-100 relative">
                                                             {item.images?.[0]
-                                                                ? <img src={`http://localhost:5000${item.images[0]}`} alt="" className="w-full h-full object-cover" />
+                                                                ? <img src={item.images[0]} alt="" className="w-full h-full object-cover" />
                                                                 : <div className="w-full h-full flex items-center justify-center"><Package className="w-8 h-8 text-gray-300" /></div>}
                                                             <div className="absolute top-2 right-2 flex gap-1">
                                                                 {item.isArchived && (
@@ -655,7 +655,7 @@ const fetchProfile = async () => {
                                                             <div className="flex items-start justify-between gap-3">
                                                                 <div className="flex items-center gap-3">
                                                                     {claim.item?.images?.[0]
-                                                                        ? <img src={`http://localhost:5000${claim.item.images[0]}`} alt="" className="w-14 h-14 rounded-xl object-cover border border-gray-100" />
+                                                                        ? <img src={claim.item.images[0]} alt="" className="w-14 h-14 rounded-xl object-cover border border-gray-100" />
                                                                         : <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center"><Package className="w-6 h-6 text-gray-300" /></div>
                                                                     }
                                                                     <div>
@@ -712,7 +712,7 @@ const fetchProfile = async () => {
                                                             <div className="flex items-start justify-between gap-3">
                                                                 <div className="flex items-center gap-3">
                                                                     {claim.item?.images?.[0]
-                                                                        ? <img src={`http://localhost:5000${claim.item.images[0]}`} alt="" className="w-14 h-14 rounded-xl object-cover border border-gray-100" />
+                                                                        ? <img src={claim.item.images[0]} alt="" className="w-14 h-14 rounded-xl object-cover border border-gray-100" />
                                                                         : <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center"><Package className="w-6 h-6 text-gray-300" /></div>
                                                                     }
                                                                     <div>

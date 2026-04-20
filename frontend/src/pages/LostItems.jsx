@@ -85,7 +85,7 @@ const ItemCard = ({ item, onView }) => (
         <div className="relative h-44 bg-gray-100 overflow-hidden">
             {item.images && item.images.length > 0 ? (
                 <img
-                    src={`http://localhost:5000${item.images[0]}`}
+                    src={item.images[0]}
                     alt={item.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     onError={(e) => {
@@ -166,7 +166,7 @@ const LostItemFormModal = ({ open, onClose, initial, onSuccess }) => {
                     color: initial.color || '',
                     brand: initial.brand || '',
                 });
-                setPreviews(initial.images ? initial.images.map(i => `http://localhost:5000${i}`) : []);
+                setPreviews(initial.images || []);
             } else {
                 setForm(emptyForm);
                 setPreviews([]);
@@ -223,7 +223,7 @@ const LostItemFormModal = ({ open, onClose, initial, onSuccess }) => {
         if (!isEdit) {
             setPreviews(newPreviews);
         } else {
-            setPreviews(prev => [...prev.filter(p => p.startsWith('http://localhost')), ...newPreviews]);
+            setPreviews(prev => [...prev.filter(p => p.startsWith('/uploads')), ...newPreviews]);
         }
     };
 
@@ -271,13 +271,17 @@ const LostItemFormModal = ({ open, onClose, initial, onSuccess }) => {
         setLoading(true);
         try {
             const formData = new FormData();
-            Object.entries(form).forEach(([k, v]) => { if (v !== undefined && v !== null) formData.append(k, v); });
+            Object.entries(form).forEach(([k, v]) => { 
+                if (k !== 'images' && v !== undefined && v !== null) {
+                    formData.append(k, v); 
+                }
+            });
             files.forEach(f => formData.append('images', f));
 
             if (isEdit) {
-                await API.put(`/lost/${initial._id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+                await API.put(`/lost/${initial._id}`, formData);
             } else {
-                await API.post('/lost', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+                await API.post('/lost', formData);
             }
             onSuccess();
         } catch (err) {
@@ -470,7 +474,7 @@ const DetailModal = ({ open, onClose, initial, onEdit, onArchive, currentUser, o
                     <div className="relative flex-1 overflow-hidden min-h-[250px] md:min-h-[400px]">
                         {item.images && item.images.length > 0 ? (
                             <img
-                                src={`http://localhost:5000${item.images[activeImage]}`}
+                                src={item.images[activeImage]}
                                 alt={item.title}
                                 className="w-full h-full object-cover"
                             />
@@ -505,7 +509,7 @@ const DetailModal = ({ open, onClose, initial, onEdit, onArchive, currentUser, o
                                     onClick={() => setActiveImage(idx)}
                                     className={`w-16 h-16 shrink-0 rounded-xl overflow-hidden border-2 transition-all ${activeImage === idx ? 'border-primary-500 opacity-100 ring-2 ring-primary-500/20' : 'border-transparent opacity-50 hover:opacity-100'}`}
                                 >
-                                    <img src={`http://localhost:5000${img}`} alt={`thumb-${idx}`} className="w-full h-full object-cover" />
+                                    <img src={img} alt={`thumb-${idx}`} className="w-full h-full object-cover" />
                                 </button>
                             ))}
                         </div>
@@ -723,13 +727,25 @@ const LostItems = () => {
         setTimeout(() => setToast({ text: '', type: '' }), 3500);
     };
 
-    const handleFormSuccess = () => {
+    const handleFormSuccess = async () => {
+        const wasEdit = editMode;
+        const editedId = selectedItem?._id;
         setShowCreate(false);
         setEditMode(false);
         setSelectedItem(null);
         setShowDetail(false);
         fetchItems();
-        showToast(editMode ? 'Item updated successfully!' : 'Lost item posted successfully!');
+        showToast(wasEdit ? 'Item updated successfully!' : 'Lost item posted successfully!');
+        // Re-open detail modal with fresh data after edit
+        if (wasEdit && editedId) {
+            try {
+                const { data } = await API.get(`/lost/${editedId}`);
+                setSelectedItem(data);
+                setShowDetail(true);
+            } catch (e) {
+                // silently ignore
+            }
+        }
     };
 
     const handleView = (item) => {

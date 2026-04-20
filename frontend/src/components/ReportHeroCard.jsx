@@ -41,7 +41,7 @@ const ReportHeroCard = () => {
 
           <div className="pt-4">
             <Link
-              to="/report-lost"
+              to="/lost"
               className="group/btn inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-2xl font-bold text-lg shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 transition-all hover:scale-105"
             >
               Start Reporting Now

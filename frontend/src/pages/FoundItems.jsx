@@ -22,6 +22,9 @@ import {
     Image,
     Filter,
     RefreshCw,
+    FileText,
+    Sparkles,
+    Trophy,
 } from 'lucide-react';
 
 const CATEGORIES = ['All', 'Electronics', 'Documents', 'Clothing', 'Accessories', 'Books', 'Keys', 'Bags', 'Sports', 'Other'];
@@ -85,7 +88,7 @@ const ItemCard = ({ item, onView }) => (
         <div className="relative h-44 bg-gray-100 overflow-hidden">
             {item.images && item.images.length > 0 ? (
                 <img
-                    src={`http://localhost:5000${item.images[0]}`}
+                    src={item.images[0]}
                     alt={item.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     onError={(e) => {
@@ -159,7 +162,7 @@ const FoundItemFormModal = ({ open, onClose, initial, onSuccess }) => {
                     color: initial.color || '',
                     brand: initial.brand || '',
                 });
-                setPreviews(initial.images ? initial.images.map(i => `http://localhost:5000${i}`) : []);
+                setPreviews(initial.images || []);
             } else {
                 setForm(emptyForm);
                 setPreviews([]);
@@ -200,7 +203,7 @@ const FoundItemFormModal = ({ open, onClose, initial, onSuccess }) => {
         if (!isEdit) {
             setPreviews(newPreviews);
         } else {
-            setPreviews(prev => [...prev.filter(p => p.startsWith('http://localhost')), ...newPreviews]);
+            setPreviews(prev => [...prev.filter(p => p.startsWith('/uploads')), ...newPreviews]);
         }
     };
 
@@ -239,13 +242,17 @@ const FoundItemFormModal = ({ open, onClose, initial, onSuccess }) => {
         setError('');
         try {
             const formData = new FormData();
-            Object.entries(form).forEach(([k, v]) => { if (v !== undefined && v !== null) formData.append(k, v); });
+            Object.entries(form).forEach(([k, v]) => { 
+                if (k !== 'images' && v !== undefined && v !== null) {
+                    formData.append(k, v); 
+                }
+            });
             files.forEach(f => formData.append('images', f));
 
             if (isEdit) {
-                await API.put(`/found/${initial._id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+                await API.put(`/found/${initial._id}`, formData);
             } else {
-                await API.post('/found', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+                await API.post('/found', formData);
             }
             onSuccess();
         } catch (err) {
@@ -298,11 +305,21 @@ const FoundItemFormModal = ({ open, onClose, initial, onSuccess }) => {
                     {/* Category & Status row */}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-600 mb-1.5">Category <span className="text-red-400">*</span></label>
-                            <select id="found-category" value={form.category} onChange={handleInputChange}
-                                className={inputClass}>
-                                {CATEGORIES.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
+                            <label className="block text-sm font-medium text-gray-600 mb-2">Category <span className="text-red-400">*</span></label>
+                            <div className="flex gap-2 flex-wrap">
+                                {CATEGORIES.filter(c => c !== 'All').map(c => (
+                                    <button
+                                        key={c}
+                                        type="button"
+                                        onClick={() => handleInputChange({ target: { id: 'found-category', value: c } })}
+                                        className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all border ${form.category === c
+                                            ? 'bg-primary-500 text-white border-primary-500 shadow-md shadow-primary-500/10'
+                                            : 'bg-gray-50 text-gray-500 border-gray-200 hover:border-primary-300 hover:text-primary-600'}`}
+                                    >
+                                        {c}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-600 mb-1.5">Date Found <span className="text-red-400">*</span></label>
@@ -403,7 +420,7 @@ const DetailModal = ({ open, onClose, initial, onEdit, onArchive, currentUser, o
                     <div className="relative flex-1 overflow-hidden min-h-[250px] md:min-h-[400px]">
                         {item.images && item.images.length > 0 ? (
                             <img
-                                src={`http://localhost:5000${item.images[activeImage]}`}
+                                src={item.images[activeImage]}
                                 alt={item.title}
                                 className="w-full h-full object-cover"
                             />
@@ -438,7 +455,7 @@ const DetailModal = ({ open, onClose, initial, onEdit, onArchive, currentUser, o
                                     onClick={() => setActiveImage(idx)}
                                     className={`w-16 h-16 shrink-0 rounded-xl overflow-hidden border-2 transition-all ${activeImage === idx ? 'border-primary-500 opacity-100 ring-2 ring-primary-500/20' : 'border-transparent opacity-50 hover:opacity-100'}`}
                                 >
-                                    <img src={`http://localhost:5000${img}`} alt={`thumb-${idx}`} className="w-full h-full object-cover" />
+                                    <img src={img} alt={`thumb-${idx}`} className="w-full h-full object-cover" />
                                 </button>
                             ))}
                         </div>
@@ -652,13 +669,25 @@ const FoundItems = () => {
         setTimeout(() => setToast({ text: '', type: '' }), 3500);
     };
 
-    const handleFormSuccess = () => {
+    const handleFormSuccess = async () => {
+        const wasEdit = editMode;
+        const editedId = selectedItem?._id;
         setShowCreate(false);
         setEditMode(false);
         setSelectedItem(null);
         setShowDetail(false);
         fetchItems();
-        showToast(editMode ? 'Item updated successfully!' : 'Found item posted successfully!');
+        showToast(wasEdit ? 'Item updated successfully!' : 'Found item posted successfully!');
+        // Re-open detail modal with fresh data after edit
+        if (wasEdit && editedId) {
+            try {
+                const { data } = await API.get(`/found/${editedId}`);
+                setSelectedItem(data);
+                setShowDetail(true);
+            } catch (e) {
+                // silently ignore
+            }
+        }
     };
 
     const handleView = (item) => {
@@ -787,19 +816,34 @@ const FoundItems = () => {
                         )}
                     </div>
 
-                    {/* Category quick-filter pills */}
-                    <div className="flex gap-2 flex-wrap">
-                        {CATEGORIES.map(cat => (
-                            <button
-                                key={cat}
-                                onClick={() => { setCategory(cat); setCurrentPage(1); }}
-                                className={`px-3 py-1 rounded-full text-xs font-medium transition-all border ${category === cat
-                                    ? 'bg-primary-500 text-white border-primary-500 shadow-sm'
-                                    : 'bg-white text-gray-500 border-gray-200 hover:border-primary-300 hover:text-primary-600'}`}
-                            >
-                                {cat}
-                            </button>
-                        ))}
+                    {/* Category quick-filter chips */}
+                    <div className="flex gap-2.5 flex-wrap overflow-x-auto pb-2 scrollbar-hide">
+                        {CATEGORIES.map(cat => {
+                            const icons = {
+                                'All': <Package className="w-3.5 h-3.5" />,
+                                'Electronics': <Search className="w-3.5 h-3.5" />,
+                                'Documents': <FileText className="w-3.5 h-3.5" />,
+                                'Clothing': <Tag className="w-3.5 h-3.5" />,
+                                'Accessories': <Sparkles className="w-3.5 h-3.5" />,
+                                'Books': <FileText className="w-3.5 h-3.5" />,
+                                'Keys': <Tag className="w-3.5 h-3.5" />,
+                                'Bags': <Package className="w-3.5 h-3.5" />,
+                                'Sports': <Trophy className="w-3.5 h-3.5" />,
+                                'Other': <Tag className="w-3.5 h-3.5" />,
+                            };
+                            return (
+                                <button
+                                    key={cat}
+                                    onClick={() => { setCategory(cat); setCurrentPage(1); }}
+                                    className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 border ${category === cat
+                                        ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white border-transparent shadow-lg shadow-emerald-500/25 scale-105'
+                                        : 'bg-white text-gray-500 border-gray-200 hover:border-primary-300 hover:text-primary-600 hover:bg-primary-50/30'}`}
+                                >
+                                    {icons[cat] || <Tag className="w-3.5 h-3.5" />}
+                                    {cat}
+                                </button>
+                            );
+                        })}
                     </div>
 
                     {/* Expanded filter panel */}
