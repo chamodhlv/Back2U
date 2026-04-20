@@ -31,7 +31,10 @@ import {
   Clock as ClockIcon,
   Bell,
   CheckCheck,
-  Check
+  Check,
+  Eye,
+  FileText,
+  MessageCircle
 } from "lucide-react";
 import { useNotifications } from "../context/NotificationContext";
 import { formatTimeAgo } from "../utils/dateUtils";
