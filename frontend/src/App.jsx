@@ -1,5 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
+import { initializeSocket, disconnectSocket } from './socket';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
@@ -8,6 +11,10 @@ import Register from './pages/Register';
 import StudentDashboard from './pages/StudentDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import LostItems from './pages/LostItems';
+import FoundItems from './pages/FoundItems';
+import Notices from './pages/Notices';
+import ChatBot from './pages/ChatBot';
+import Leaderboard from './pages/Leaderboard';
 
 const AuthRedirect = ({ children }) => {
   const { user } = useAuth();
@@ -17,48 +24,54 @@ const AuthRedirect = ({ children }) => {
   return children;
 };
 
+// SocketInitializer component
+const SocketInitializer = ({ children }) => {
+  const { user } = useAuth();
+
+  useEffect(() => {
+    let socket = null;
+
+    if (user?._id) {
+      console.log('🟡 App: Initializing socket for user:', user._id);
+      socket = initializeSocket(user._id);
+      console.log('🟢 App: Socket after init:', socket?.id);
+    }
+
+    return () => {
+      if (user?._id) {
+        console.log('🔴 App: Disconnecting socket for user:', user._id);
+        disconnectSocket();
+      }
+    };
+  }, [user]);
+
+  return children;
+};
+
 function App() {
   return (
     <AuthProvider>
       <Router>
-        <Navbar />
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route
-            path="/login"
-            element={
-              <AuthRedirect>
-                <Login />
-              </AuthRedirect>
-            }
-          />
-          <Route
-            path="/register"
-            element={
-              <AuthRedirect>
-                <Register />
-              </AuthRedirect>
-            }
-          />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <StudentDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute adminOnly>
-                <AdminDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/lost" element={<LostItems />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <SocketInitializer>
+          <NotificationProvider>
+            <Navbar />
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/login" element={<AuthRedirect><Login /></AuthRedirect>} />
+              <Route path="/register" element={<AuthRedirect><Register /></AuthRedirect>} />
+              <Route path="/dashboard" element={<ProtectedRoute><StudentDashboard /></ProtectedRoute>} />
+              <Route path="/leaderboard" element={<Leaderboard />} />
+              <Route path="/chat" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
+              <Route path="/lost" element={<LostItems />} />
+              <Route path="/found-items" element={<FoundItems />} />
+              <Route path="/notices" element={<Notices />} />
+              <Route path="/chatbot" element={<ChatBot />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+            <ChatBot />
+          </NotificationProvider>
+        </SocketInitializer>
       </Router>
     </AuthProvider>
   );

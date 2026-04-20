@@ -15,6 +15,12 @@ const lostItemSchema = new mongoose.Schema(
     category: {
       type: String,
       required: [true, 'Category is required'],
+      enum: ['Electronics', 'Documents', 'Clothing', 'Accessories', 'Books', 'Keys', 'Bags', 'Sports', 'Other'],
+      default: 'Other',
+    },
+    lastSeenLocation: {
+      type: String,
+      required: [true, 'Last seen location is required'],
       trim: true,
     },
     dateLost: {

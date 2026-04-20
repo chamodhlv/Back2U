@@ -40,10 +40,33 @@ const userSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
+        // ⭐ NEW GAMIFICATION FIELDS (start)
+        monthlyPoints: {
+            type: Number,
+            default: 0,
+            comment: 'Points earned in the current month (resets monthly)'
+        },
+        pointsLastUpdated: {
+            type: Date,
+            default: Date.now,
+            comment: 'Last time points were updated (for cooldown logic)'
+        },
+        successfulReturns: {
+            type: Number,
+            default: 0,
+            comment: 'Count of successful item returns (used for badges)'
+        },
+        lastMonthlyReset: {
+            type: Date,
+            default: Date.now,
+            comment: 'Timestamp of last monthly points reset'
+        },
+        // ⭐ END GAMIFICATION FIELDS
         activityHistory: {
             lostPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'LostItem' }],
-            foundPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'LostItem' }],
+            foundPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'FoundItem' }],
             claims: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Claim' }],
+            noticePosts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Notice' }],
         },
         isActive: {
             type: Boolean,

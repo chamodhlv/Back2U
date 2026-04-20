@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import API from '../api/axios';
+import ClaimPanel from '../components/claims/ClaimPanel';
 import {
     Search,
     Plus,
@@ -141,8 +142,15 @@ const LostItemFormModal = ({ open, onClose, initial, onSuccess }) => {
     const [files, setFiles] = useState([]);
     const [previews, setPreviews] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
+    const [fieldErrors, setFieldErrors] = useState({});
     const fileRef = useRef();
+
+    // Validation regexes
+    // Blocked in name / description / location: % # @ $ ^ & * ( ) ! _ + =
+    const specialCharRegex = /[%#@$^&*()!_+=]/;
+    // Color / brand: letters (and spaces) only — no digits, no special chars
+    const noSpecialOrNumbersRegex = /[^a-zA-Z\s]/;
+    const startsWithLetterRegex = /^[A-Za-z]/;
 
     const isEdit = !!initial;
 
@@ -164,7 +172,7 @@ const LostItemFormModal = ({ open, onClose, initial, onSuccess }) => {
                 setPreviews([]);
             }
             setFiles([]);
-            setError('');
+            setFieldErrors({});
         }
     }, [open, initial]);
 
@@ -172,23 +180,39 @@ const LostItemFormModal = ({ open, onClose, initial, onSuccess }) => {
         const { id, value } = e.target;
         const name = id.replace('lost-', '');
         let cleanValue = value;
-
-        // Specific special characters for Title, Description, Location
-        const specialCharRegex = /[@#₹%&\-()\/\\?+":!']/g;
-        // All non-alphabetic/non-space for Color, Brand
-        const noSpecialOrNumbersRegex = /[^a-zA-Z\s]/g;
+        let error = '';
 
         if (['title', 'description', 'location'].includes(name)) {
-            // Mapping 'location' to 'lastSeenLocation' internal state
             const stateName = name === 'location' ? 'lastSeenLocation' : name;
-            cleanValue = value.replace(specialCharRegex, '');
+            const fieldKey = stateName;
+
+            // Block special characters — strip them silently
+            if (specialCharRegex.test(value)) {
+                cleanValue = value.replace(specialCharRegex, '');
+                error = 'Can not use special characters';
+            }
+
+            // Must-start-with-letter for title and description
+            if (['title', 'description'].includes(name)) {
+                if (cleanValue.length > 0 && !startsWithLetterRegex.test(cleanValue)) {
+                    error = 'Must start with a letter';
+                }
+            }
+
             setForm(prev => ({ ...prev, [stateName]: cleanValue }));
+            setFieldErrors(prev => ({ ...prev, [fieldKey]: error }));
         } else if (['color', 'brand'].includes(name)) {
-            cleanValue = value.replace(noSpecialOrNumbersRegex, '');
+            // Show error if input contains numbers or special characters
+            if (noSpecialOrNumbersRegex.test(value)) {
+                cleanValue = value.replace(noSpecialOrNumbersRegex, '');
+                error = 'Can not use special characters and numbers — only letters allowed';
+            }
             setForm(prev => ({ ...prev, [name]: cleanValue }));
+            setFieldErrors(prev => ({ ...prev, [name]: error }));
         } else {
             // Other fields (date, category)
             setForm(prev => ({ ...prev, [name]: value }));
+            setFieldErrors(prev => ({ ...prev, [name]: '' }));
         }
     };
 
@@ -205,37 +229,46 @@ const LostItemFormModal = ({ open, onClose, initial, onSuccess }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
-        // Reject specific special characters: @ # ₹ % & - ( ) / ? + " : ! '
-        // We MUST escape the forward slash \/ and hyphen \-
-        const specialCharRegex = /[@#₹%&\-()\/\\?+":!']/;
-        
-        // Color and brand: Reject ALL special characters and numbers. 
-        const noSpecialOrNumbersRegex = /[^a-zA-Z\s]/;
 
-        if (specialCharRegex.test(form.title)) {
-            setError("Item Title cannot contain special characters such as @ # ₹ % & - ( ) / ? + \" : ! '");
-            return;
-        }
-        if (specialCharRegex.test(form.description)) {
-            setError("Description cannot contain special characters such as @ # ₹ % & - ( ) / ? + \" : ! '");
-            return;
-        }
-        if (specialCharRegex.test(form.lastSeenLocation)) {
-            setError("Location cannot contain special characters such as @ # ₹ % & - ( ) / ? + \" : ! '");
-            return;
-        }
-        if (noSpecialOrNumbersRegex.test(form.color)) {
-            setError("Color cannot contain special characters or numbers");
-            return;
-        }
-        if (noSpecialOrNumbersRegex.test(form.brand)) {
-            setError("Brand cannot contain special characters or numbers");
+        const errors = {};
+
+        // ── Required field checks ────────────────────────────────────────────
+        if (!form.title.trim())
+            errors.title = 'Item Title is required';
+        if (!form.description.trim())
+            errors.description = 'Description is required';
+        if (!form.dateLost)
+            errors.dateLost = 'Date Lost is required';
+        if (!form.lastSeenLocation.trim())
+            errors.lastSeenLocation = 'Location is required';
+
+        // ── Special character checks (Title, Description, Location) ──────────
+        if (!errors.title && specialCharRegex.test(form.title))
+            errors.title = 'Cannot use special characters';
+        if (!errors.description && specialCharRegex.test(form.description))
+            errors.description = 'Cannot use special characters';
+        if (!errors.lastSeenLocation && specialCharRegex.test(form.lastSeenLocation))
+            errors.lastSeenLocation = 'Cannot use special characters';
+
+        // ── Must start with a letter (Title & Description) ───────────────────
+        if (!errors.title && form.title.trim() && !startsWithLetterRegex.test(form.title.trim()))
+            errors.title = 'Must start with a letter';
+        if (!errors.description && form.description.trim() && !startsWithLetterRegex.test(form.description.trim()))
+            errors.description = 'Must start with a letter';
+
+        // ── Alpha-only checks (Color & Brand — optional fields) ───────────────
+        if (form.color.trim() && noSpecialOrNumbersRegex.test(form.color))
+            errors.color = 'Cannot use special characters and numbers — only letters allowed';
+        if (form.brand.trim() && noSpecialOrNumbersRegex.test(form.brand))
+            errors.brand = 'Cannot use special characters and numbers — only letters allowed';
+
+        if (Object.keys(errors).length > 0) {
+            setFieldErrors(errors);
             return;
         }
 
+        setFieldErrors({});
         setLoading(true);
-        setError('');
         try {
             const formData = new FormData();
             Object.entries(form).forEach(([k, v]) => { if (v !== undefined && v !== null) formData.append(k, v); });
@@ -248,7 +281,7 @@ const LostItemFormModal = ({ open, onClose, initial, onSuccess }) => {
             }
             onSuccess();
         } catch (err) {
-            setError(err.response?.data?.message || (isEdit ? 'Failed to update item' : 'Failed to create item'));
+            setFieldErrors({ _form: err.response?.data?.message || (isEdit ? 'Failed to update item' : 'Failed to create item') });
         } finally {
             setLoading(false);
         }
@@ -273,9 +306,9 @@ const LostItemFormModal = ({ open, onClose, initial, onSuccess }) => {
                     </button>
                 </div>
 
-                {error && (
+                {fieldErrors._form && (
                     <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-sm text-red-600">
-                        <AlertCircle className="w-4 h-4 shrink-0" /> {error}
+                        <AlertCircle className="w-4 h-4 shrink-0" /> {fieldErrors._form}
                     </div>
                 )}
 
@@ -284,17 +317,29 @@ const LostItemFormModal = ({ open, onClose, initial, onSuccess }) => {
                     <div>
                         <label className="block text-sm font-medium text-gray-600 mb-1.5">Item Title <span className="text-red-400">*</span></label>
                         <input id="lost-title" type="text" value={form.title} onChange={handleInputChange}
-                            className={inputClass} placeholder="e.g. Blue AirPods Pro case" required />
+                            className={`${inputClass} ${fieldErrors.title ? 'border-red-400 focus:border-red-400 focus:ring-red-400/10' : ''}`}
+                            placeholder="e.g. Blue AirPods Pro case" />
+                        {fieldErrors.title && (
+                            <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3 shrink-0" />{fieldErrors.title}
+                            </p>
+                        )}
                     </div>
 
                     {/* Description */}
                     <div>
                         <label className="block text-sm font-medium text-gray-600 mb-1.5">Description <span className="text-red-400">*</span></label>
                         <textarea id="lost-description" value={form.description} onChange={handleInputChange}
-                            className={`${inputClass} resize-none`} rows={3} placeholder="Describe the item in detail..." required />
+                            className={`${inputClass} resize-none ${fieldErrors.description ? 'border-red-400 focus:border-red-400 focus:ring-red-400/10' : ''}`}
+                            rows={3} placeholder="Describe the item in detail..." />
+                        {fieldErrors.description && (
+                            <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3 shrink-0" />{fieldErrors.description}
+                            </p>
+                        )}
                     </div>
 
-                    {/* Category & Status row */}
+                    {/* Category & Date row */}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-600 mb-1.5">Category <span className="text-red-400">*</span></label>
@@ -307,15 +352,26 @@ const LostItemFormModal = ({ open, onClose, initial, onSuccess }) => {
                             <label className="block text-sm font-medium text-gray-600 mb-1.5">Date Lost <span className="text-red-400">*</span></label>
                             <input id="lost-dateLost" type="date" value={form.dateLost} onChange={handleInputChange}
                                 max={new Date().toISOString().slice(0, 10)}
-                                className={inputClass} required />
+                                className={`${inputClass} ${fieldErrors.dateLost ? 'border-red-400 focus:border-red-400 focus:ring-red-400/10' : ''}`} />
+                            {fieldErrors.dateLost && (
+                                <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                                    <AlertCircle className="w-3 h-3 shrink-0" />{fieldErrors.dateLost}
+                                </p>
+                            )}
                         </div>
                     </div>
 
-                    {/* Last Seen Location */}
+                    {/* Last Known Location */}
                     <div>
                         <label className="block text-sm font-medium text-gray-600 mb-1.5">Last Known Location <span className="text-red-400">*</span></label>
                         <input id="lost-location" type="text" value={form.lastSeenLocation} onChange={handleInputChange}
-                            className={inputClass} placeholder="e.g. Library 2nd floor, Block A Canteen" required />
+                            className={`${inputClass} ${fieldErrors.lastSeenLocation ? 'border-red-400 focus:border-red-400 focus:ring-red-400/10' : ''}`}
+                            placeholder="e.g. Library 2nd floor, Block A Canteen" />
+                        {fieldErrors.lastSeenLocation && (
+                            <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3 shrink-0" />{fieldErrors.lastSeenLocation}
+                            </p>
+                        )}
                     </div>
 
                     {/* Color & Brand */}
@@ -323,12 +379,24 @@ const LostItemFormModal = ({ open, onClose, initial, onSuccess }) => {
                         <div>
                             <label className="block text-sm font-medium text-gray-600 mb-1.5">Color</label>
                             <input id="lost-color" type="text" value={form.color} onChange={handleInputChange}
-                                className={inputClass} placeholder="e.g. Black, Silver" />
+                                className={`${inputClass} ${fieldErrors.color ? 'border-red-400 focus:border-red-400 focus:ring-red-400/10' : ''}`}
+                                placeholder="e.g. Black, Silver" />
+                            {fieldErrors.color && (
+                                <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                                    <AlertCircle className="w-3 h-3 shrink-0" />{fieldErrors.color}
+                                </p>
+                            )}
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-600 mb-1.5">Brand / Make</label>
                             <input id="lost-brand" type="text" value={form.brand} onChange={handleInputChange}
-                                className={inputClass} placeholder="e.g. Apple, Samsung" />
+                                className={`${inputClass} ${fieldErrors.brand ? 'border-red-400 focus:border-red-400 focus:ring-red-400/10' : ''}`}
+                                placeholder="e.g. Apple, Samsung" />
+                            {fieldErrors.brand && (
+                                <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                                    <AlertCircle className="w-3 h-3 shrink-0" />{fieldErrors.brand}
+                                </p>
+                            )}
                         </div>
                     </div>
 
@@ -375,12 +443,15 @@ const LostItemFormModal = ({ open, onClose, initial, onSuccess }) => {
 
 // ─── Detail Modal ────────────────────────────────────────────────────────────
 
-const DetailModal = ({ open, onClose, initial, onEdit, onArchive, currentUser }) => {
+const DetailModal = ({ open, onClose, initial, onEdit, onArchive, currentUser, onNavigateToChat }) => {
     const [activeImage, setActiveImage] = useState(0);
 
     useEffect(() => {
-        if (open) setActiveImage(0);
-    }, [open, initial]);
+        if (open) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setActiveImage(0);
+        }
+    }, [open]);
 
     const item = initial;
     if (!open || !item) return null;
@@ -389,13 +460,13 @@ const DetailModal = ({ open, onClose, initial, onEdit, onArchive, currentUser })
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col md:flex-row relative">
+            <div className="bg-white rounded-3xl w-full max-w-5xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col md:flex-row relative">
                 <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-white/80 backdrop-blur rounded-full text-gray-400 hover:text-gray-600 z-10 shadow-sm">
                     <X className="w-5 h-5" />
                 </button>
 
                 {/* Left: Images */}
-                <div className="md:w-1/2 flex flex-col bg-gray-100 relative max-h-[40vh] md:max-h-none">
+                <div className="md:w-[40%] flex flex-col bg-gray-100 relative max-h-[40vh] md:max-h-none">
                     <div className="relative flex-1 overflow-hidden min-h-[250px] md:min-h-[400px]">
                         {item.images && item.images.length > 0 ? (
                             <img
@@ -411,13 +482,13 @@ const DetailModal = ({ open, onClose, initial, onEdit, onArchive, currentUser })
                         )}
                         {item.images && item.images.length > 1 && (
                             <>
-                                <button 
+                                <button
                                     onClick={() => setActiveImage(prev => prev === 0 ? item.images.length - 1 : prev - 1)}
                                     className="absolute left-3 top-1/2 -translate-y-1/2 p-2 bg-black/40 hover:bg-black/60 text-white rounded-full transition-all backdrop-blur-sm"
                                 >
                                     <ChevronLeft className="w-5 h-5" />
                                 </button>
-                                <button 
+                                <button
                                     onClick={() => setActiveImage(prev => prev === item.images.length - 1 ? 0 : prev + 1)}
                                     className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-black/40 hover:bg-black/60 text-white rounded-full transition-all backdrop-blur-sm"
                                 >
@@ -441,44 +512,59 @@ const DetailModal = ({ open, onClose, initial, onEdit, onArchive, currentUser })
                     )}
                 </div>
 
-                {/* Right: Info */}
-                <div className="md:w-1/2 p-6 md:p-8 overflow-y-auto">
-                    <div className="flex items-center gap-2 mb-4">
-                        <span className="text-xs text-gray-400 font-medium">#{item._id.slice(-6).toUpperCase()}</span>
-                    </div>
-
-                    <h2 className="text-2xl font-bold text-gray-800 mb-2">{item.title}</h2>
-                    <p className="text-sm text-gray-500 mb-6 leading-relaxed">{item.description}</p>
-
-                    <div className="grid grid-cols-2 gap-4 mb-8">
-                        {[
-                            { label: 'Category', value: item.category },
-                            { label: 'Location', value: item.lastSeenLocation },
-                            { label: 'Date Lost', value: formatDate(item.dateLost) },
-                            { label: 'Color', value: item.color || '—' },
-                            { label: 'Brand', value: item.brand || '—' },
-                            { label: 'Posted By', value: item.postedBy?.fullName || 'Anonymous' },
-                        ].map(({ label, value }) => (
-                            <div key={label} className="p-3 bg-gray-50 rounded-xl">
-                                <span className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-0.5">{label}</span>
-                                <span className="text-sm font-semibold text-gray-700">{value}</span>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Owner actions */}
-                    {isOwner && (
-                        <div className="border-t border-gray-100 pt-6 flex gap-3">
-                            <button onClick={onEdit}
-                                className="flex-1 py-3 bg-gray-100 border border-gray-200 rounded-xl text-sm font-medium text-surface-dark hover:bg-gray-200 transition-all flex items-center justify-center gap-2">
-                                <Edit3 className="w-4 h-4" /> Edit
-                            </button>
-                            <button onClick={onArchive}
-                                className="flex-1 py-3 bg-red-50 border border-red-200 rounded-xl text-sm font-medium text-red-600 hover:bg-red-100 transition-all flex items-center justify-center gap-2">
-                                <Trash2 className="w-4 h-4" /> Archive
-                            </button>
+                {/* Right: Info + Claims */}
+                <div className="md:w-[60%] flex flex-col">
+                    <div className="flex-1 overflow-y-auto p-6 md:p-8">
+                        <div className="flex items-center gap-2 mb-4">
+                            <span className="text-xs text-gray-400 font-medium">#{item._id.slice(-6).toUpperCase()}</span>
+                            {item.status === 'Claimed' && (
+                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold">Claimed</span>
+                            )}
                         </div>
-                    )}
+
+                        <h2 className="text-2xl font-bold text-gray-800 mb-2">{item.title}</h2>
+                        <p className="text-sm text-gray-500 mb-6 leading-relaxed">{item.description}</p>
+
+                        <div className="grid grid-cols-2 gap-4 mb-6">
+                            {[
+                                { label: 'Category', value: item.category },
+                                { label: 'Location', value: item.lastSeenLocation },
+                                { label: 'Date Lost', value: formatDate(item.dateLost) },
+                                { label: 'Color', value: item.color || '—' },
+                                { label: 'Brand', value: item.brand || '—' },
+                                { label: 'Posted By', value: item.postedBy?.fullName || 'Anonymous' },
+                            ].map(({ label, value }) => (
+                                <div key={label} className="p-3 bg-gray-50 rounded-xl">
+                                    <span className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-0.5">{label}</span>
+                                    <span className="text-sm font-semibold text-gray-700">{value}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Claims Panel */}
+                        {currentUser && (
+                            <ClaimPanel
+                                item={item}
+                                itemType="lost"
+                                currentUser={currentUser}
+                                onNavigateToChat={onNavigateToChat}
+                            />
+                        )}
+
+                        {/* Owner actions */}
+                        {isOwner && (
+                            <div className="border-t border-gray-100 pt-6 flex gap-3 mt-6">
+                                <button onClick={onEdit}
+                                    className="flex-1 py-3 bg-gray-100 border border-gray-200 rounded-xl text-sm font-medium text-surface-dark hover:bg-gray-200 transition-all flex items-center justify-center gap-2">
+                                    <Edit3 className="w-4 h-4" /> Edit
+                                </button>
+                                <button onClick={onArchive}
+                                    className="flex-1 py-3 bg-red-50 border border-red-200 rounded-xl text-sm font-medium text-red-600 hover:bg-red-100 transition-all flex items-center justify-center gap-2">
+                                    <Trash2 className="w-4 h-4" /> Archive
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
@@ -524,19 +610,21 @@ const LostItems = () => {
     // Debounce search
     const searchTimer = useRef(null);
     const handleSearchChange = (val) => {
-        // Validation: No special characters as per request
-        // Using the same specialized list or just rejecting common symbols
-        const specialCharRegex = /[@#₹%&\-()\/\\?+":!']/;
         let cleanVal = val;
+        // Regex for special characters that should not be in the search bar
+        // Note: Some characters like '-', '(', ')', '\', '?', '+' are special in regex and need to be escaped.
+        // Other characters like '@', '#', '₹', '%', '&', '"', ':', '!' are literal within a character class.
+        const specialCharRegex = /[@#₹%&\-()/\\?+":!']/;
 
         if (specialCharRegex.test(val)) {
-            showToast('Search bar cannot contain special characters', 'error');
-            cleanVal = val.replace(/[@#₹%&\-()\/\\?+":!']/g, '');
+            showToast('Search bar can not contain special characters', 'error');
+            // Remove special characters from the input value
+            cleanVal = val.replace(specialCharRegex, '');
         }
-        
+
         setSearch(cleanVal);
         clearTimeout(searchTimer.current);
-        
+
         if (cleanVal.length >= 1) {
             fetchSuggestions(cleanVal);
         } else {
@@ -552,7 +640,8 @@ const LostItems = () => {
             const { data } = await API.get(`/lost/suggestions?q=${q}`);
             setSuggestions(data);
             setShowSuggestions(data.length > 0);
-        } catch (e) {
+            // eslint-disable-next-line no-unused-vars
+        } catch (error) {
             console.error('Suggestions fetch error');
         }
     };
@@ -592,14 +681,42 @@ const LostItems = () => {
             setItems(data.items);
             setTotalPages(data.totalPages);
             setTotalItems(data.totalItems);
-        } catch (e) {
+            // eslint-disable-next-line no-unused-vars
+        } catch (error) {
             showToast('Failed to load items', 'error');
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => { fetchItems(); }, [currentPage, search, category, status, location, color, brand, dateFrom, dateTo]);
+    useEffect(() => {
+        fetchItems();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentPage, search, category, location, color, brand, dateFrom, dateTo]);
+
+    // Handle deep-link to open a specific item from Dashboard claims
+    const locationObj = useLocation();
+    useEffect(() => {
+        const handleDeepLink = async () => {
+            if (locationObj.state?.openItem) {
+                setSelectedItem(locationObj.state.openItem);
+                setShowDetail(true);
+                window.history.replaceState({}, '');
+            } else if (locationObj.state?.openItemId) {
+                const itemId = locationObj.state.openItemId;
+                try {
+                    const { data } = await API.get(`/lost/${itemId}`);
+                    setSelectedItem(data);
+                    setShowDetail(true);
+                } catch (error) {
+                    console.error('Failed to fetch item for deep-link:', error);
+                    showToast('Failed to load item details', 'error');
+                }
+                window.history.replaceState({}, '');
+            }
+        };
+        handleDeepLink();
+    }, [locationObj.state]);
 
     const showToast = (text, type = 'success') => {
         setToast({ text, type });
@@ -634,7 +751,8 @@ const LostItems = () => {
             setSelectedItem(null);
             fetchItems();
             showToast('Item archived successfully!');
-        } catch (e) {
+            // eslint-disable-next-line no-unused-vars
+        } catch (error) {
             showToast('Failed to archive item', 'error');
         }
     };
@@ -769,45 +887,45 @@ const LostItems = () => {
                             {/* Location */}
                             <div>
                                 <label className="block text-xs text-gray-500 mb-1.5 font-medium">Location</label>
-                                <input type="text" value={location} onChange={e => { 
-                                        const cleanVal = e.target.value.replace(/[@#₹%&\-()\/\\?+":!']/g, '');
-                                        setLocation(cleanVal); 
-                                        setCurrentPage(1); 
-                                    }}
+                                <input type="text" value={location} onChange={e => {
+                                    const cleanVal = e.target.value.replace(/[@#₹%&\-()/\\?+":!']/g, '');
+                                    setLocation(cleanVal);
+                                    setCurrentPage(1);
+                                }}
                                     className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-500"
                                     placeholder="Filter by location" />
                             </div>
                             <div>
                                 <label className="block text-xs text-gray-500 mb-1.5 font-medium">Color</label>
-                                <input type="text" value={color} onChange={e => { 
-                                        const cleanVal = e.target.value.replace(/[^a-zA-Z\s]/g, '');
-                                        setColor(cleanVal); 
-                                        setCurrentPage(1); 
-                                    }}
+                                <input type="text" value={color} onChange={e => {
+                                    const cleanVal = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                                    setColor(cleanVal);
+                                    setCurrentPage(1);
+                                }}
                                     className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-500"
                                     placeholder="Filter by color" />
                             </div>
                             <div>
                                 <label className="block text-xs text-gray-500 mb-1.5 font-medium">Brand</label>
-                                <input type="text" value={brand} onChange={e => { 
-                                        const cleanVal = e.target.value.replace(/[^a-zA-Z\s]/g, '');
-                                        setBrand(cleanVal); 
-                                        setCurrentPage(1); 
-                                    }}
+                                <input type="text" value={brand} onChange={e => {
+                                    const cleanVal = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                                    setBrand(cleanVal);
+                                    setCurrentPage(1);
+                                }}
                                     className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-500"
                                     placeholder="Filter by brand" />
                             </div>
                             <div className="col-span-2 sm:col-span-1 grid grid-cols-2 gap-2">
                                 <div>
                                     <label className="block text-xs text-gray-500 mb-1.5 font-medium">Date From</label>
-                                    <input type="date" value={dateFrom} 
+                                    <input type="date" value={dateFrom}
                                         onChange={e => { setDateFrom(e.target.value); setCurrentPage(1); }}
                                         max={dateTo || new Date().toISOString().split('T')[0]}
                                         className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-500" />
                                 </div>
                                 <div>
                                     <label className="block text-xs text-gray-500 mb-1.5 font-medium">Date To</label>
-                                    <input type="date" value={dateTo} 
+                                    <input type="date" value={dateTo}
                                         onChange={e => { setDateTo(e.target.value); setCurrentPage(1); }}
                                         min={dateFrom}
                                         max={new Date().toISOString().split('T')[0]}
@@ -883,6 +1001,10 @@ const LostItems = () => {
                 onEdit={handleEdit}
                 onArchive={() => { setShowDetail(false); setShowDelete(true); }}
                 currentUser={user}
+                onNavigateToChat={(chatId) => {
+                    setShowDetail(false);
+                    navigate('/dashboard', { state: { tab: 'messages', chatId } });
+                }}
             />
 
             {/* Delete confirmation */}

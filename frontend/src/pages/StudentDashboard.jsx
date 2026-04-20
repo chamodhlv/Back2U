@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import API from '../api/axios';
+import ChatList from '../components/chat/ChatList';
+import ChatView from '../components/chat/ChatView';
+import { getMyClaims, getReceivedClaims, getMyFoundPosts, getMyLostPosts } from '../api/claims';
+import MyReports from '../components/MyReports';
 import {
     User,
     Mail,
@@ -12,18 +16,27 @@ import {
     Save,
     X,
     LayoutDashboard,
-    Activity,
     Settings,
     Search,
     FileText,
     CheckCircle,
     AlertCircle,
     LogOut,
+    MessageCircle,
+    Package,
+    Archive,
+    Eye,
+    ClipboardList,
+    Flag,
+    TrendingUp, 
+     Award,
+
 } from 'lucide-react';
 
 const StudentDashboard = () => {
-    const { user, updateUser, logout } = useAuth();
+    const { updateUser, logout } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
     const [profile, setProfile] = useState(null);
     const [editing, setEditing] = useState(false);
     const [editForm, setEditForm] = useState({});
@@ -32,32 +45,102 @@ const StudentDashboard = () => {
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState({ text: '', type: '' });
     const [activeTab, setActiveTab] = useState('overview');
+    const [selectedChat, setSelectedChat] = useState(null);
+    const [myClaims, setMyClaims] = useState([]);
+    const [receivedClaims, setReceivedClaims] = useState([]);
+    const [claimsLoading, setClaimsLoading] = useState(false);
+    const [claimsSubTab, setClaimsSubTab] = useState('submitted');
+    const [myFoundPosts, setMyFoundPosts] = useState([]);
+    const [myLostPosts, setMyLostPosts] = useState([]);
+    const [postsLoading, setPostsLoading] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
+    
+
+    // Handle deep-link from notifications and item detail modals
+    useEffect(() => {
+        if (location.state?.tab) {
+            setActiveTab(location.state.tab);
+            if (location.state.chatId) {
+                setSelectedChat({ _id: location.state.chatId });
+            }
+        }
+    }, [location.state]);
 
     useEffect(() => {
         fetchProfile();
+        fetchUnreadCount();
+        // Fetch claims on load so overview stats are always accurate
+        getMyClaims().then(r => setMyClaims(r.data || [])).catch(() => {});
+        getReceivedClaims().then(r => setReceivedClaims(r.data || [])).catch(() => {});
     }, []);
 
-    const fetchProfile = async () => {
+    const fetchUnreadCount = async () => {
         try {
-            const { data } = await API.get('/users/profile');
-            setProfile(data);
-            setEditForm({
-                fullName: data.fullName,
-                email: data.email,
-                password: '',
-            });
+            const { data } = await API.get('/chats');
+            const chats = data.data || [];
+            const count = chats.reduce((acc, chat) => acc + (chat.unreadCount || 0), 0);
+            setUnreadCount(count);
         } catch (error) {
-            setMessage({ text: 'Failed to load profile', type: 'error' });
-        } finally {
-            setLoading(false);
+            console.error('Failed to fetch unread count:', error);
         }
     };
+
+    useEffect(() => {
+        if (activeTab === 'claims') {
+            setClaimsLoading(true);
+            Promise.all([
+                getMyClaims().then(r => setMyClaims(r.data || [])).catch(() => {}),
+                getReceivedClaims().then(r => setReceivedClaims(r.data || [])).catch(() => {}),
+            ]).finally(() => setClaimsLoading(false));
+        }
+        if (activeTab === 'posts') {
+            setPostsLoading(true);
+            Promise.all([
+                getMyFoundPosts().then(r => setMyFoundPosts(r.data || [])).catch(() => {}),
+                getMyLostPosts().then(r => setMyLostPosts(r.data || [])).catch(() => {}),
+            ]).finally(() => setPostsLoading(false));
+        }
+    }, [activeTab]);
+    
+    useEffect(() => {
+    if (activeTab === 'overview') {
+        fetchProfile();
+    }
+}, [activeTab]);
+
+const fetchProfile = async () => {
+    try {
+        const { data } = await API.get('/users/profile');
+        console.log('Profile data from backend:', data); 
+        setProfile(data);
+        setEditForm({
+            fullName: data.fullName,
+            email: data.email,
+            password: '',
+        });
+    // eslint-disable-next-line no-unused-vars
+    } catch (error) {
+        setMessage({ text: 'Failed to load profile', type: 'error' });
+    } finally {
+        setLoading(false);
+    }
+};
 
     const handleSave = async () => {
         setSaving(true);
         try {
             const payload = { fullName: editForm.fullName, email: editForm.email };
             if (editForm.password) payload.password = editForm.password;
+
+            if (editForm.fullName.length > 30) {
+                setMessage({ text: 'Full Name must be 30 characters or less', type: 'error' });
+                return;
+            }
+
+            if (!/^[a-zA-Z\s]+$/.test(editForm.fullName)) {
+                setMessage({ text: 'Full Name must only contain English letters and spaces', type: 'error' });
+                return;
+            }
 
             const { data } = await API.put('/users/profile', payload);
             setProfile(data);
@@ -82,6 +165,7 @@ const StudentDashboard = () => {
             await API.delete('/users/profile');
             logout();
             navigate('/');
+        // eslint-disable-next-line no-unused-vars
         } catch (error) {
             setMessage({ text: 'Failed to delete account', type: 'error' });
         }
@@ -94,7 +178,10 @@ const StudentDashboard = () => {
 
     const sidebarItems = [
         { id: 'overview', label: 'Overview', icon: <LayoutDashboard className="w-5 h-5" /> },
-        { id: 'activity', label: 'Activity', icon: <Activity className="w-5 h-5" /> },
+        { id: 'posts', label: 'Your Posts', icon: <ClipboardList className="w-5 h-5" /> },
+        { id: 'claims', label: 'Claims', icon: <FileText className="w-5 h-5" /> },
+        { id: 'messages', label: 'Messages', icon: <MessageCircle className="w-5 h-5" /> },
+        { id: 'reports', label: 'Reports', icon: <Flag className="w-5 h-5" /> },
         { id: 'settings', label: 'Settings', icon: <Settings className="w-5 h-5" /> },
     ];
 
@@ -133,8 +220,34 @@ const StudentDashboard = () => {
                             >
                                 {item.icon}
                                 {item.label}
+                                {item.id === 'messages' && unreadCount > 0 && (
+                                    <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                        {unreadCount}
+                                    </span>
+                                )}
                             </button>
                         ))}
+                        
+                        {/* Communication Section with Messages Link */}
+                        <div className="mt-6 pt-6 border-t border-gray-200">
+                            <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                Quick Links
+                            </h3>
+                            <div className="mt-2 space-y-1">
+                                <Link
+                                    to="/chat"
+                                    className="group flex items-center px-3 py-2 text-sm font-medium text-gray-600 rounded-md hover:text-gray-900 hover:bg-gray-50"
+                                >
+                                    <MessageCircle className="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-500" />
+                                    Open Chat
+                                    {unreadCount > 0 && (
+                                        <span className="ml-auto bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-xs">
+                                            {unreadCount}
+                                        </span>
+                                    )}
+                                </Link>
+                            </div>
+                        </div>
                     </nav>
 
                     <button
@@ -161,6 +274,11 @@ const StudentDashboard = () => {
                             >
                                 {item.icon}
                                 {item.label}
+                                {item.id === 'messages' && unreadCount > 0 && (
+                                    <span className="ml-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                                        {unreadCount}
+                                    </span>
+                                )}
                             </button>
                         ))}
                     </div>
@@ -182,64 +300,75 @@ const StudentDashboard = () => {
                         </div>
                     )}
 
-                    {/* Overview Tab */}
-                    {activeTab === 'overview' && (
-                        <>
-                            <div className="mb-8">
-                                <h1 className="text-2xl font-bold text-surface-dark">Welcome back, {profile?.fullName?.split(' ')[0]}!</h1>
-                                <p className="text-gray-500 text-sm mt-1">Here's an overview of your account</p>
-                            </div>
+{/* Overview Tab */}
+{activeTab === 'overview' && (
+    <>
+        <div className="mb-8">
+            <h1 className="text-2xl font-bold text-surface-dark">Welcome back, {profile?.fullName?.split(' ')[0]}!</h1>
+            <p className="text-gray-500 text-sm mt-1">Here's an overview of your account</p>
+        </div>
 
-                            {/* Stats cards */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                                {[
-                                    {
-                                        label: 'Points',
-                                        value: profile?.points || 0,
-                                        icon: <Trophy className="w-5 h-5" />,
-                                        gradient: 'from-amber-500 to-orange-500',
-                                        bg: 'bg-amber-50',
-                                        text: 'text-amber-600',
-                                    },
-                                    {
-                                        label: 'Lost Posts',
-                                        value: profile?.activityHistory?.lostPosts?.length || 0,
-                                        icon: <Search className="w-5 h-5" />,
-                                        gradient: 'from-red-500 to-pink-500',
-                                        bg: 'bg-red-50',
-                                        text: 'text-red-600',
-                                    },
-                                    {
-                                        label: 'Found Posts',
-                                        value: profile?.activityHistory?.foundPosts?.length || 0,
-                                        icon: <CheckCircle className="w-5 h-5" />,
-                                        gradient: 'from-emerald-500 to-teal-500',
-                                        bg: 'bg-emerald-50',
-                                        text: 'text-emerald-600',
-                                    },
-                                    {
-                                        label: 'Claims',
-                                        value: profile?.activityHistory?.claims?.length || 0,
-                                        icon: <FileText className="w-5 h-5" />,
-                                        gradient: 'from-primary-500 to-accent-500',
-                                        bg: 'bg-primary-50',
-                                        text: 'text-primary-600',
-                                    },
-                                ].map((stat, i) => (
-                                    <div
-                                        key={i}
-                                        className="p-5 bg-white border border-gray-200/60 rounded-2xl hover:shadow-md hover:shadow-gray-200/50 transition-all"
-                                    >
-                                        <div className="flex items-center justify-between mb-3">
-                                            <span className="text-sm text-gray-500">{stat.label}</span>
-                                            <div className={`w-9 h-9 rounded-lg ${stat.bg} flex items-center justify-center ${stat.text}`}>
-                                                {stat.icon}
-                                            </div>
-                                        </div>
-                                        <p className="text-2xl font-bold text-surface-dark">{stat.value}</p>
-                                    </div>
-                                ))}
-                            </div>
+        {/* Stats cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            {[
+                {
+                    label: 'Total Points',
+                    value: profile?.points || 0,
+                    subValue: profile?.monthlyPoints ? `+${profile.monthlyPoints} this month` : null,
+                    icon: <Trophy className="w-5 h-5" />,
+                    bg: 'bg-amber-50',
+                    text: 'text-amber-600',
+                },
+                {
+                    label: 'Lost Posts',
+                    value: profile?.activityHistory?.lostPosts?.length || 0,
+                    icon: <Search className="w-5 h-5" />,
+                    bg: 'bg-red-50',
+                    text: 'text-red-600',
+                },
+                {
+                    label: 'Found Posts',
+                    value: profile?.activityHistory?.foundPosts?.length || 0,
+                    icon: <CheckCircle className="w-5 h-5" />,
+                    bg: 'bg-emerald-50',
+                    text: 'text-emerald-600',
+                },
+                {
+                    label: 'Claims',
+                    value: myClaims.length + receivedClaims.length,
+                    icon: <FileText className="w-5 h-5" />,
+                    bg: 'bg-primary-50',
+                    text: 'text-primary-600',
+                },
+                {
+    label: 'Successful Returns',
+    value: profile?.successfulReturns || 0,
+    icon: <CheckCircle className="w-5 h-5" />,
+    bg: 'bg-teal-50',
+    text: 'text-teal-600',
+}
+            ].map((stat, i) => (
+                <div
+                    key={i}
+                    className="p-5 bg-white border border-gray-200/60 rounded-2xl hover:shadow-md hover:shadow-gray-200/50 transition-all"
+                >
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="text-sm text-gray-500">{stat.label}</span>
+                        <div className={`w-9 h-9 rounded-lg ${stat.bg} flex items-center justify-center ${stat.text}`}>
+                            {stat.icon}
+                        </div>
+                    </div>
+                    <div>
+                        <p className="text-2xl font-bold text-surface-dark">{stat.value}</p>
+                        {stat.subValue && (
+                            <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                                <TrendingUp className="w-3 h-3" /> {stat.subValue}
+                            </p>
+                        )}
+                    </div>
+                </div>
+            ))}
+        </div>
 
                             {/* Profile Card */}
                             <div className="bg-white border border-gray-200/60 rounded-2xl overflow-hidden shadow-sm">
@@ -268,8 +397,9 @@ const StudentDashboard = () => {
                                                 <input
                                                     type="text"
                                                     value={editForm.fullName}
-                                                    onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })}
+                                                    onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value.replace(/[^a-zA-Z\s]/g, '') })}
                                                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-surface-dark focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 focus:bg-white transition-all"
+                                                    maxLength={30}
                                                 />
                                             </div>
                                             <div>
@@ -345,7 +475,7 @@ const StudentDashboard = () => {
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                                                    <Activity className="w-5 h-5 text-gray-400" />
+                                                    <AlertCircle className="w-5 h-5 text-gray-400" />
                                                     <div>
                                                         <p className="text-xs text-gray-400">Status</p>
                                                         <p className="text-sm">
@@ -367,56 +497,319 @@ const StudentDashboard = () => {
                         </>
                     )}
 
-                    {/* Activity Tab */}
-                    {activeTab === 'activity' && (
+                    {/* Your Posts Tab */}
+                    {activeTab === 'posts' && (
                         <>
                             <div className="mb-8">
-                                <h1 className="text-2xl font-bold text-surface-dark">Activity History</h1>
-                                <p className="text-gray-500 text-sm mt-1">Your lost & found activity</p>
+                                <h1 className="text-2xl font-bold text-surface-dark">Your Posts</h1>
+                                <p className="text-gray-500 text-sm mt-1">Lost and found items you have posted</p>
                             </div>
 
-                            <div className="grid gap-6">
-                                {[
-                                    {
-                                        title: 'Lost Posts',
-                                        count: profile?.activityHistory?.lostPosts?.length || 0,
-                                        icon: <Search className="w-5 h-5" />,
-                                        gradient: 'from-red-500 to-pink-500',
-                                        message: 'No lost item posts yet. When you report a lost item, it will appear here.',
-                                    },
-                                    {
-                                        title: 'Found Posts',
-                                        count: profile?.activityHistory?.foundPosts?.length || 0,
-                                        icon: <CheckCircle className="w-5 h-5" />,
-                                        gradient: 'from-emerald-500 to-teal-500',
-                                        message: 'No found item posts yet. Help others by reporting items you find!',
-                                    },
-                                    {
-                                        title: 'Claims',
-                                        count: profile?.activityHistory?.claims?.length || 0,
-                                        icon: <FileText className="w-5 h-5" />,
-                                        gradient: 'from-primary-500 to-accent-500',
-                                        message: 'No claims yet. Claim items that belong to you from the found board.',
-                                    },
-                                ].map((section, i) => (
-                                    <div
-                                        key={i}
-                                        className="p-6 bg-white border border-gray-200/60 rounded-2xl"
-                                    >
-                                        <div className="flex items-center gap-3 mb-4">
-                                            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${section.gradient} flex items-center justify-center text-white`}>
-                                                {section.icon}
-                                            </div>
-                                            <div>
-                                                <h3 className="font-semibold text-surface-dark">{section.title}</h3>
-                                                <p className="text-sm text-gray-500">{section.count} total</p>
-                                            </div>
+                            {postsLoading ? (
+                                <div className="flex justify-center py-12">
+                                    <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                                </div>
+                            ) : (
+                                <div className="space-y-8">
+                                    {/* Lost Posts */}
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center"><Search className="w-4 h-4 text-red-500" /></div>
+                                            <h3 className="font-semibold text-surface-dark">Lost Posts</h3>
+                                            <span className="ml-auto text-xs text-gray-400">{myLostPosts.length} total</span>
                                         </div>
-                                        <div className="p-4 bg-gray-50 rounded-xl border border-gray-200/60 text-center">
-                                            <p className="text-sm text-gray-500">{section.message}</p>
-                                        </div>
+                                        {myLostPosts.length === 0 ? (
+                                            <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center">
+                                                <p className="text-sm text-gray-400">No lost item posts yet.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                {myLostPosts.map(item => (
+                                                    <div key={item._id}
+                                                        onClick={() => navigate('/lost')}
+                                                        className="bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-md transition-all cursor-pointer group"
+                                                    >
+                                                        <div className="h-32 bg-gray-100 relative">
+                                                            {item.images?.[0]
+                                                                ? <img src={`http://localhost:5000${item.images[0]}`} alt="" className="w-full h-full object-cover" />
+                                                                : <div className="w-full h-full flex items-center justify-center"><Package className="w-8 h-8 text-gray-300" /></div>}
+                                                            <div className="absolute top-2 right-2 flex gap-1">
+                                                                {item.isArchived && (
+                                                                    <span className="px-2 py-0.5 bg-gray-800/70 text-white text-[10px] rounded-full flex items-center gap-1"><Archive className="w-3 h-3" /> Archived</span>
+                                                                )}
+                                                                <span className={`px-2 py-0.5 text-[10px] rounded-full font-semibold ${
+                                                                    item.status === 'Claimed' ? 'bg-blue-500 text-white' : 'bg-amber-500 text-white'
+                                                                }`}>{item.status}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="p-3">
+                                                            <p className="text-sm font-semibold text-gray-800 truncate group-hover:text-blue-600 transition-colors">{item.title}</p>
+                                                            <p className="text-xs text-gray-400 mt-1">{new Date(item.createdAt).toLocaleDateString()}</p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
-                                ))}
+
+                                    {/* Found Posts */}
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center"><CheckCircle className="w-4 h-4 text-emerald-500" /></div>
+                                            <h3 className="font-semibold text-surface-dark">Found Posts</h3>
+                                            <span className="ml-auto text-xs text-gray-400">{myFoundPosts.length} total</span>
+                                        </div>
+                                        {myFoundPosts.length === 0 ? (
+                                            <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center">
+                                                <p className="text-sm text-gray-400">No found item posts yet.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                {myFoundPosts.map(item => (
+                                                    <div key={item._id}
+                                                        onClick={() => navigate('/found-items')}
+                                                        className="bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-md transition-all cursor-pointer group"
+                                                    >
+                                                        <div className="h-32 bg-gray-100 relative">
+                                                            {item.images?.[0]
+                                                                ? <img src={`http://localhost:5000${item.images[0]}`} alt="" className="w-full h-full object-cover" />
+                                                                : <div className="w-full h-full flex items-center justify-center"><Package className="w-8 h-8 text-gray-300" /></div>}
+                                                            <div className="absolute top-2 right-2 flex gap-1">
+                                                                {item.isArchived && (
+                                                                    <span className="px-2 py-0.5 bg-gray-800/70 text-white text-[10px] rounded-full flex items-center gap-1"><Archive className="w-3 h-3" /> Archived</span>
+                                                                )}
+                                                                <span className={`px-2 py-0.5 text-[10px] rounded-full font-semibold ${
+                                                                    item.status === 'Claimed' ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white'
+                                                                }`}>{item.status}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="p-3">
+                                                            <p className="text-sm font-semibold text-gray-800 truncate group-hover:text-blue-600 transition-colors">{item.title}</p>
+                                                            <p className="text-xs text-gray-400 mt-1">{new Date(item.createdAt).toLocaleDateString()}</p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    )}
+
+                    {/* Claims Tab */}
+                    {activeTab === 'claims' && (
+                        <>
+                            <div className="mb-6">
+                                <h1 className="text-2xl font-bold text-surface-dark">Claims</h1>
+                                <p className="text-gray-500 text-sm mt-1">Claims you have submitted and received on your posts</p>
+                            </div>
+
+                            {/* Sub-tab toggle */}
+                            <div className="flex gap-2 mb-6">
+                                <button
+                                    onClick={() => setClaimsSubTab('submitted')}
+                                    className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                                        claimsSubTab === 'submitted'
+                                            ? 'bg-blue-500 text-white shadow-md shadow-blue-500/20'
+                                            : 'bg-white border border-gray-200 text-gray-500 hover:text-surface-dark'
+                                    }`}
+                                >Submitted ({myClaims.length})</button>
+                                <button
+                                    onClick={() => setClaimsSubTab('received')}
+                                    className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                                        claimsSubTab === 'received'
+                                            ? 'bg-blue-500 text-white shadow-md shadow-blue-500/20'
+                                            : 'bg-white border border-gray-200 text-gray-500 hover:text-surface-dark'
+                                    }`}
+                                >Received ({receivedClaims.length})</button>
+                            </div>
+
+                            {claimsLoading ? (
+                                <div className="flex justify-center py-12">
+                                    <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Submitted Claims */}
+                                    {claimsSubTab === 'submitted' && (
+                                        myClaims.length === 0 ? (
+                                            <div className="bg-white border border-gray-200 rounded-2xl p-10 text-center">
+                                                <FileText className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+                                                <p className="text-sm font-semibold text-gray-400">No claims submitted yet</p>
+                                                <p className="text-xs text-gray-300 mt-1">Claims you submit on found or lost items will appear here.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-4">
+                                                {myClaims.map(claim => {
+                                                    const statusMap = {
+                                                        pending: 'bg-amber-50 text-amber-700 border-amber-200',
+                                                        approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                                        rejected: 'bg-red-50 text-red-700 border-red-200',
+                                                        claimed: 'bg-blue-50 text-blue-700 border-blue-200',
+                                                    };
+                                                    return (
+                                                        <div key={claim._id} 
+                                                             onClick={() => navigate(claim.itemType === 'found' ? '/found-items' : '/lost', { state: { openItem: claim.item } })}
+                                                             className="bg-white border border-gray-200 rounded-2xl p-5 cursor-pointer hover:border-blue-200 hover:shadow-md transition-all group">
+                                                            <div className="flex items-start justify-between gap-3">
+                                                                <div className="flex items-center gap-3">
+                                                                    {claim.item?.images?.[0]
+                                                                        ? <img src={`http://localhost:5000${claim.item.images[0]}`} alt="" className="w-14 h-14 rounded-xl object-cover border border-gray-100" />
+                                                                        : <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center"><Package className="w-6 h-6 text-gray-300" /></div>
+                                                                    }
+                                                                    <div>
+                                                                        <p className="font-semibold text-gray-800 text-sm">{claim.item?.title || 'Item'}</p>
+                                                                        <p className="text-xs text-gray-400 capitalize">{claim.itemType} item</p>
+                                                                        <p className="text-xs text-gray-400 mt-0.5">{new Date(claim.createdAt).toLocaleDateString()}</p>
+                                                                    </div>
+                                                                </div>
+                                                                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border shrink-0 ${statusMap[claim.status] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                                                                    {claim.status.charAt(0).toUpperCase() + claim.status.slice(1)}
+                                                                </span>
+                                                            </div>
+                                                            {claim.status === 'approved' && claim.chatId && (
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); setSelectedChat({ _id: claim.chatId }); setActiveTab('messages'); }}
+                                                                    className="mt-3 w-full py-2 text-xs bg-blue-50 border border-blue-200 text-blue-700 rounded-xl hover:bg-blue-100 transition-all font-semibold flex items-center justify-center gap-1.5"
+                                                                >
+                                                                    <MessageCircle className="w-3.5 h-3.5" /> Open Chat
+                                                                </button>
+                                                            )}
+                                                            {claim.status === 'rejected' && claim.rejectionReason && (
+                                                                <p className="mt-2 text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                                                                    Reason: {claim.rejectionReason}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )
+                                    )}
+
+                                    {/* Received Claims */}
+                                    {claimsSubTab === 'received' && (
+                                        receivedClaims.length === 0 ? (
+                                            <div className="bg-white border border-gray-200 rounded-2xl p-10 text-center">
+                                                <FileText className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+                                                <p className="text-sm font-semibold text-gray-400">No claims received</p>
+                                                <p className="text-xs text-gray-300 mt-1">When others submit claims on your posts, they will appear here.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-4">
+                                                {receivedClaims.map(claim => {
+                                                    const statusMap = {
+                                                        pending: 'bg-amber-50 text-amber-700 border-amber-200',
+                                                        approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                                        rejected: 'bg-red-50 text-red-700 border-red-200',
+                                                        claimed: 'bg-blue-50 text-blue-700 border-blue-200',
+                                                    };
+                                                    return (
+                                                        <div key={claim._id} 
+                                                             onClick={() => navigate(claim.itemType === 'found' ? '/found-items' : '/lost', { state: { openItem: claim.item } })}
+                                                             className="bg-white border border-gray-200 rounded-2xl p-5 cursor-pointer hover:border-blue-200 hover:shadow-md transition-all group">
+                                                            <div className="flex items-start justify-between gap-3">
+                                                                <div className="flex items-center gap-3">
+                                                                    {claim.item?.images?.[0]
+                                                                        ? <img src={`http://localhost:5000${claim.item.images[0]}`} alt="" className="w-14 h-14 rounded-xl object-cover border border-gray-100" />
+                                                                        : <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center"><Package className="w-6 h-6 text-gray-300" /></div>
+                                                                    }
+                                                                    <div>
+                                                                        <p className="font-semibold text-gray-800 text-sm">{claim.item?.title || 'Item'}</p>
+                                                                        <p className="text-xs text-gray-400">Claimed by: <span className="font-medium text-gray-600">{claim.claimantId?.fullName || 'Unknown'}</span></p>
+                                                                        <p className="text-xs text-gray-400 mt-0.5">{new Date(claim.createdAt).toLocaleDateString()}</p>
+                                                                    </div>
+                                                                </div>
+                                                                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border shrink-0 ${statusMap[claim.status] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                                                                    {claim.status.charAt(0).toUpperCase() + claim.status.slice(1)}
+                                                                </span>
+                                                            </div>
+                                                            {claim.status === 'pending' && (
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); navigate(claim.itemType === 'found' ? '/found-items' : '/lost', { state: { openItem: claim.item } }); }}
+                                                                    className="mt-3 w-full py-2 text-xs bg-amber-50 border border-amber-200 text-amber-700 rounded-xl hover:bg-amber-100 transition-all font-semibold flex items-center justify-center gap-1.5"
+                                                                >
+                                                                    <Eye className="w-3.5 h-3.5" /> Review on Post
+                                                                </button>
+                                                            )}
+                                                            {claim.status === 'approved' && claim.chatId && (
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); setSelectedChat({ _id: claim.chatId }); setActiveTab('messages'); }}
+                                                                    className="mt-3 w-full py-2 text-xs bg-blue-50 border border-blue-200 text-blue-700 rounded-xl hover:bg-blue-100 transition-all font-semibold flex items-center justify-center gap-1.5"
+                                                                >
+                                                                    <MessageCircle className="w-3.5 h-3.5" /> Open Chat
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )
+                                    )}
+                                </>
+                            )}
+                        </>
+                    )}
+
+                    {/* Messages Tab */}
+                    {activeTab === 'messages' && (
+                        <>
+                            <div className="mb-6">
+                                <h1 className="text-2xl font-bold text-surface-dark">Messages</h1>
+                                <p className="text-gray-500 text-sm mt-1">Chats opened after claim approval</p>
+                            </div>
+                            <div className="bg-white border border-gray-200/60 rounded-2xl overflow-hidden shadow-sm flex h-[60vh]">
+                                {/* Chat list sidebar */}
+                                <div className="w-80 border-r border-gray-100 flex flex-col">
+                                    <div className="px-4 py-3 border-b border-gray-100">
+                                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Conversations</p>
+                                    </div>
+                                    <ChatList
+                                        selectedChatId={selectedChat?._id}
+                                        onSelectChat={(chat) => setSelectedChat(chat)}
+                                    />
+                                </div>
+                                {/* Chat window */}
+                                <div className="flex-1 flex flex-col">
+                                    {selectedChat ? (
+                                        <ChatView
+                                            key={selectedChat._id}
+                                            chat={selectedChat}
+                                            currentUser={profile}
+                                            onBack={() => setSelectedChat(null)}
+                                        />
+                                    ) : (
+                                        <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+                                            <MessageCircle className="w-12 h-12 text-gray-200 mb-3" />
+                                            <p className="text-sm font-semibold text-gray-400">Select a conversation</p>
+                                            <p className="text-xs text-gray-300 mt-1">Choose a chat from the left to start messaging</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {/* Reports Tab */}
+                    {activeTab === 'reports' && (
+                        <>
+                            <div className="mb-6">
+                                <div className="flex justify-between items-center">
+                                    <div>
+                                        <h1 className="text-2xl font-bold text-surface-dark flex items-center gap-2">
+                                            <Flag className="w-6 h-6 text-primary-600" />
+                                            My Reports
+                                        </h1>
+                                        <p className="text-gray-500 text-sm mt-1">
+                                            Track and manage your reported content
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="bg-white border border-gray-200/60 rounded-2xl overflow-hidden shadow-sm">
+                                <MyReports />
                             </div>
                         </>
                     )}
