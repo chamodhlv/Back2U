@@ -27,8 +27,6 @@ import {
   Filter,
   RefreshCw,
   Flag, // Add Flag icon for reports
-  Eye,
-  Check,
   XCircle,
   Clock as ClockIcon,
   GitMerge,
@@ -36,6 +34,8 @@ import {
   ArrowLeftRight,
   Package,
 } from "lucide-react";
+import { useNotifications } from "../context/NotificationContext";
+import { formatTimeAgo } from "../utils/dateUtils";
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
@@ -137,6 +137,16 @@ const AdminDashboard = () => {
     isActive: true,
     points: 0,
   });
+
+  const { 
+    notifications, 
+    unreadCount: notifUnreadCount, 
+    markAsRead, 
+    markAllAsRead, 
+    deleteNotification, 
+    deleteAllNotifications,
+    fetchNotifications 
+  } = useNotifications();
 
   useEffect(() => {
     fetchUsers();
@@ -569,10 +579,25 @@ const AdminDashboard = () => {
     navigate("/");
   };
 
+  const handleNotifClick = async (notif) => {
+    if (!notif.isRead) {
+      await markAsRead(notif._id);
+    }
+
+    if (notif.type === 'claim') {
+      setActiveTab('users'); // Admins might want to see users or reports
+    } else if (notif.type === 'message') {
+      // Admin might not have a dedicated message view like students yet
+      // but let's keep it consistent if they do.
+    }
+    setActiveTab('notifications');
+  };
+
   const sidebarItems = [
     { id: "overview", label: "Overview", icon: <LayoutDashboard className="w-5 h-5" /> },
     { id: "users", label: "Users", icon: <Users className="w-5 h-5" /> },
     { id: "reports", label: "Reports", icon: <Flag className="w-5 h-5" /> },
+    { id: "notifications", label: "Notifications", icon: <Bell className="w-5 h-5" /> },
     { id: "notices", label: "Notices", icon: <Megaphone className="w-5 h-5" /> },
     { id: "matching", label: "Matching Posts", icon: <GitMerge className="w-5 h-5" /> },
   ];
@@ -673,6 +698,11 @@ const AdminDashboard = () => {
               >
                 {item.icon}
                 {item.label}
+                {item.id === 'notifications' && notifUnreadCount > 0 && (
+                  <span className="ml-auto bg-primary-500 text-white text-xs px-2 py-0.5 rounded-full">
+                    {notifUnreadCount}
+                  </span>
+                )}
               </button>
             ))}
           </nav>
@@ -701,6 +731,11 @@ const AdminDashboard = () => {
               >
                 {item.icon}
                 {item.label}
+                {item.id === 'notifications' && notifUnreadCount > 0 && (
+                  <span className="ml-1 bg-primary-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                    {notifUnreadCount}
+                  </span>
+                )}
               </button>
             ))}
           </div>
