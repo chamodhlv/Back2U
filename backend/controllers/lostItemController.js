@@ -241,12 +241,12 @@ const getSuggestions = async (req, res) => {
             title: { $regex: q, $options: 'i' },
             isArchived: false
         })
-        .limit(10)
-        .select('title category');
+            .limit(10)
+            .select('title category');
 
         // Extract unique formatted suggestions
         const suggestions = [...new Set(items.map(item => item.title))];
-        
+
         res.json(suggestions);
     } catch (error) {
         res.status(500).json({ message: 'Server error' });
