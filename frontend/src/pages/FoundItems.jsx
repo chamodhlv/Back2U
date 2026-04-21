@@ -88,7 +88,7 @@ const ItemCard = ({ item, onView }) => (
         <div className="relative h-44 bg-gray-100 overflow-hidden">
             {item.images && item.images.length > 0 ? (
                 <img
-                    src={item.images[0]}
+                    src={`${API.defaults.baseURL.replace('/api', '')}${item.images[0]}`}
                     alt={item.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     onError={(e) => {
@@ -162,7 +162,7 @@ const FoundItemFormModal = ({ open, onClose, initial, onSuccess }) => {
                     color: initial.color || '',
                     brand: initial.brand || '',
                 });
-                setPreviews(initial.images || []);
+                setPreviews(initial.images ? initial.images.map(i => `${API.defaults.baseURL.replace('/api', '')}${i}`) : []);
             } else {
                 setForm(emptyForm);
                 setPreviews([]);
@@ -203,7 +203,7 @@ const FoundItemFormModal = ({ open, onClose, initial, onSuccess }) => {
         if (!isEdit) {
             setPreviews(newPreviews);
         } else {
-            setPreviews(prev => [...prev.filter(p => p.startsWith('/uploads')), ...newPreviews]);
+            setPreviews(prev => [...prev.filter(p => p.startsWith('http://localhost')), ...newPreviews]);
         }
     };
 
@@ -420,7 +420,7 @@ const DetailModal = ({ open, onClose, initial, onEdit, onArchive, currentUser, o
                     <div className="relative flex-1 overflow-hidden min-h-[250px] md:min-h-[400px]">
                         {item.images && item.images.length > 0 ? (
                             <img
-                                src={item.images[activeImage]}
+                                src={`${API.defaults.baseURL.replace('/api', '')}${item.images[activeImage]}`}
                                 alt={item.title}
                                 className="w-full h-full object-cover"
                             />
@@ -455,7 +455,7 @@ const DetailModal = ({ open, onClose, initial, onEdit, onArchive, currentUser, o
                                     onClick={() => setActiveImage(idx)}
                                     className={`w-16 h-16 shrink-0 rounded-xl overflow-hidden border-2 transition-all ${activeImage === idx ? 'border-primary-500 opacity-100 ring-2 ring-primary-500/20' : 'border-transparent opacity-50 hover:opacity-100'}`}
                                 >
-                                    <img src={img} alt={`thumb-${idx}`} className="w-full h-full object-cover" />
+                                    <img src={`${API.defaults.baseURL.replace('/api', '')}${img}`} alt={`thumb-${idx}`} className="w-full h-full object-cover" />
                                 </button>
                             ))}
                         </div>
@@ -669,25 +669,13 @@ const FoundItems = () => {
         setTimeout(() => setToast({ text: '', type: '' }), 3500);
     };
 
-    const handleFormSuccess = async () => {
-        const wasEdit = editMode;
-        const editedId = selectedItem?._id;
+    const handleFormSuccess = () => {
         setShowCreate(false);
         setEditMode(false);
         setSelectedItem(null);
         setShowDetail(false);
         fetchItems();
-        showToast(wasEdit ? 'Item updated successfully!' : 'Found item posted successfully!');
-        // Re-open detail modal with fresh data after edit
-        if (wasEdit && editedId) {
-            try {
-                const { data } = await API.get(`/found/${editedId}`);
-                setSelectedItem(data);
-                setShowDetail(true);
-            } catch (e) {
-                // silently ignore
-            }
-        }
+        showToast(editMode ? 'Item updated successfully!' : 'Found item posted successfully!');
     };
 
     const handleView = (item) => {
