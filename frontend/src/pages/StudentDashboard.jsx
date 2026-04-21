@@ -863,7 +863,8 @@ const StudentDashboard = () => {
                                     notifications.map((notif) => (
                                         <div
                                             key={notif._id}
-                                            className={`group bg-white border rounded-2xl p-4 transition-all hover:shadow-md hover:border-primary-200/60 flex items-start gap-4 ${
+                                            onClick={() => handleNotifClick(notif)}
+                                            className={`group cursor-pointer bg-white border rounded-2xl p-4 transition-all hover:shadow-md hover:border-primary-200/60 flex items-start gap-4 ${
                                                 !notif.isRead ? 'border-primary-100 bg-primary-50/10' : 'border-gray-200/60'
                                             }`}
                                         >
@@ -890,7 +891,7 @@ const StudentDashboard = () => {
                                             <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 {!notif.isRead && (
                                                     <button
-                                                        onClick={() => markAsRead(notif._id)}
+                                                        onClick={(e) => { e.stopPropagation(); markAsRead(notif._id); }}
                                                         className="p-2 text-primary-500 hover:bg-primary-50 rounded-lg transition-all"
                                                         title="Mark as read"
                                                     >
@@ -898,14 +899,14 @@ const StudentDashboard = () => {
                                                     </button>
                                                 )}
                                                 <button
-                                                    onClick={() => deleteNotification(notif._id)}
+                                                    onClick={(e) => { e.stopPropagation(); deleteNotification(notif._id); }}
                                                     className="p-2 text-gray-400 hover:text-danger-500 hover:bg-danger-50 rounded-lg transition-all"
                                                     title="Delete"
                                                 >
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>
                                                 <button
-                                                    onClick={() => handleNotifClick(notif)}
+                                                    onClick={(e) => { e.stopPropagation(); handleNotifClick(notif); }}
                                                     className="p-2 text-gray-400 hover:text-primary-500 hover:bg-gray-50 rounded-lg transition-all"
                                                     title="View details"
                                                 >
