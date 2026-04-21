@@ -66,7 +66,6 @@ exports.createClaim = async (req, res) => {
                 io.to(item.postedBy.toString()).emit('new_notification', notification);
             }
         }
-        }
 
         res.status(201).json({ success: true, data: claim });
     } catch (error) {
