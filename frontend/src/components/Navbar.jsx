@@ -4,16 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import { Menu, X, Search, LogOut, User, LayoutDashboard, Bell, FileText, MessageCircle, CheckCheck, GitMerge, Trophy } from 'lucide-react';
 
-const formatTimeAgo = (date) => {
-    const seconds = Math.floor((new Date() - new Date(date)) / 1000);
-    if (seconds < 60) return 'Just now';
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    return `${days}d ago`;
-};
+import { formatTimeAgo } from '../utils/dateUtils';
 
 const NotificationDropdown = ({ notifications, unreadCount, onNotifClick, onMarkAllRead }) => (
     <div className="absolute right-0 top-full mt-2 w-96 max-w-[calc(100vw-32px)] bg-white border border-gray-200/60 rounded-2xl shadow-2xl shadow-gray-200/50 overflow-hidden z-50">
@@ -48,7 +39,7 @@ const NotificationDropdown = ({ notifications, unreadCount, onNotifClick, onMark
                     <p className="text-xs text-gray-300 mt-0.5">We&apos;ll notify you when something happens</p>
                 </div>
             ) : (
-                notifications.map((notif) => (
+                notifications.slice(0, 10).map((notif) => (
                     <button
                         key={notif._id}
                         onClick={() => onNotifClick(notif)}
@@ -91,6 +82,18 @@ const NotificationDropdown = ({ notifications, unreadCount, onNotifClick, onMark
                 ))
             )}
         </div>
+        
+        {/* Footer */}
+        {notifications.length > 0 && (
+            <div className="border-t border-gray-100 p-2">
+                <button
+                    onClick={() => onNotifClick({ type: 'all' })}
+                    className="w-full py-2 text-xs font-semibold text-primary-500 hover:bg-primary-50 rounded-xl transition-all"
+                >
+                    View All Notifications
+                </button>
+            </div>
+        )}
     </div>
 );
 
@@ -132,7 +135,9 @@ const Navbar = () => {
 
         const dashPath = user?.role === 'admin' ? '/admin' : '/dashboard';
 
-        if (notif.type === 'claim') {
+        if (notif.type === 'all') {
+            navigate(dashPath, { state: { tab: 'notifications', _ts: Date.now() }, replace: false });
+        } else if (notif.type === 'claim') {
             navigate(dashPath, { state: { tab: 'claims', _ts: Date.now() }, replace: false });
         } else if (notif.type === 'message') {
             navigate(dashPath, { state: { tab: 'messages', chatId: notif.relatedId, _ts: Date.now() }, replace: false });
